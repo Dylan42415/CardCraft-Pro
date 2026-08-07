@@ -44,16 +44,9 @@
         "card_slots": [
             {
                 "slot_index": 0,
-                "filepath": "C:/Users/Dfault/Downloads/onepiece/TIFF/OP09-004(SP1) has dithering.TIFF",
+                "filepath": null,
                 "rotation": 0,
-                "mappings": {
-                    "1": "White Ink",
-                    "3": "Emboss",
-                    "Layer 1 - Red": "Base Artwork",
-                    "Layer 1 - Green": "Base Artwork",
-                    "Layer 1 - Blue": "Base Artwork",
-                    "Layer 1 - Alpha": "Base Artwork"
-                },
+                "mappings": {},
                 "disabled_channels": [],
                 "dither_settings": {
                     "dither_mode": "Ordered Bayer",
@@ -71,16 +64,9 @@
             },
             {
                 "slot_index": 1,
-                "filepath": "C:/Users/Dfault/Downloads/onepiece/TIFF/OP09-093(SP1)  pattern - Copy.tiff",
+                "filepath": null,
                 "rotation": 0,
-                "mappings": {
-                    "1": "White Ink",
-                    "3": "Emboss",
-                    "base - Red": "Base Artwork",
-                    "base - Green": "Base Artwork",
-                    "base - Blue": "Base Artwork",
-                    "base - Alpha": "Base Artwork"
-                },
+                "mappings": {},
                 "disabled_channels": [],
                 "dither_settings": {
                     "dither_mode": "Ordered Bayer",
@@ -98,16 +84,9 @@
             },
             {
                 "slot_index": 2,
-                "filepath": "C:/Users/Dfault/Downloads/onepiece/TIFF/OP09-093(SP1)  pattern - Copy.tiff",
+                "filepath": null,
                 "rotation": 0,
-                "mappings": {
-                    "1": "White Ink",
-                    "3": "Emboss",
-                    "base - Red": "Base Artwork",
-                    "base - Green": "Base Artwork",
-                    "base - Blue": "Base Artwork",
-                    "base - Alpha": "Base Artwork"
-                },
+                "mappings": {},
                 "disabled_channels": [],
                 "dither_settings": {
                     "dither_mode": "Ordered Bayer",
@@ -294,11 +273,11 @@
         }
     },
     "project_path": "C:/Users/Dfault/Downloads/testprint.optcgproject",
-    "active_slot_index": 1,
+    "active_slot_index": 5,
     "view_mode": "Emboss Only",
-    "zoom_level": 0.28426241204014585,
-    "center_x": 622.6641036698256,
-    "center_y": 879.4690729799797,
+    "zoom_level": 0.247184706121866,
+    "center_x": 623.0158912990173,
+    "center_y": 877.8860286486154,
     "splitter_sizes": [
         338,
         937

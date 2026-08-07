@@ -43,6 +43,7 @@ class MainWindow(QMainWindow):
         self.view_mode = "Combined" # Combined, Artwork, White, Gloss, Emboss
         self.ppi = 150 # Preview resolution (fast and crisp enough)
         self._preview_cache = {}
+        self._reg_pixmap_cache = None
 
         # Setup main layout
         self.central_widget = QWidget(self)
@@ -874,6 +875,9 @@ class MainWindow(QMainWindow):
         slot = self.project.card_slots[self.active_slot_index]
         slot.filepath = None
         slot.mappings = {}
+        slot.disabled_channels = set()
+        if self.active_slot_index in self._preview_cache:
+            del self._preview_cache[self.active_slot_index]
         self.mapping_panel.show_no_card_selected()
         self.render_canvas()
 
@@ -1077,12 +1081,16 @@ class MainWindow(QMainWindow):
         sheet_rect.setPen(QPen(QColor("#2d2d39"), 1))
         scene.addItem(sheet_rect)
 
-        # 3. Render and draw registration marks
-        reg_img = layout_engine.draw_registration_marks(self.project.layout, self.ppi)
-        # Convert PIL to QImage to QPixmap
-        reg_data = reg_img.convert("RGBA").tobytes("raw", "RGBA")
-        q_img = QImage(reg_data, page_w, page_h, QImage.Format.Format_RGBA8888).copy()
-        pixmap_reg = QPixmap.fromImage(q_img)
+        # 3. Render and draw registration marks (cached to prevent allocation lags)
+        reg_cache_key = (self.project.layout.id, page_w, page_h, self.ppi)
+        if getattr(self, "_reg_pixmap_cache", None) and self._reg_pixmap_cache[0] == reg_cache_key:
+            pixmap_reg = self._reg_pixmap_cache[1]
+        else:
+            reg_img = layout_engine.draw_registration_marks(self.project.layout, self.ppi)
+            reg_data = reg_img.convert("RGBA").tobytes("raw", "RGBA")
+            q_img = QImage(reg_data, page_w, page_h, QImage.Format.Format_RGBA8888)
+            pixmap_reg = QPixmap.fromImage(q_img)
+            self._reg_pixmap_cache = (reg_cache_key, pixmap_reg)
         
         reg_item = QGraphicsPixmapItem(pixmap_reg)
         scene.addItem(reg_item)
