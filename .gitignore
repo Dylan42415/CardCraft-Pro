@@ -15,12 +15,22 @@ ENV/
 !.vscode/mcp.json
 .idea/
 
-# Large temporary export files & scratch test outputs
-scratch/
-app_run.log
+# User card image files & exports (NEVER push card artwork to Git)
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.bmp
 *.tiff
 *.tif
 *.psd
+sample_images/
+user_cards/
+downloads/
+
+# Large temporary export files & scratch test outputs
+scratch/
+app_run.log
 temp_mask.png
 page1_expected.png
 
