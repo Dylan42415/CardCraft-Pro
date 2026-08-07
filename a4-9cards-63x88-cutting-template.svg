@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A4 9-Card Cutting Template for Silhouette Studio -->
+<!-- Card size: 63 x 88 mm, Corner radius: 3 mm -->
+<!-- Layout: 3 columns x 3 rows, centered on A4 -->
+<!-- Generated to match the prepress app export layout exactly -->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="210mm" height="297mm"
+     viewBox="0 0 210 297">
+  <rect id="card_0" x="9.2500" y="15.2500" width="63.0000" height="88.0000" rx="3.0" ry="3.0" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+  <rect id="card_1" x="73.5000" y="15.2500" width="63.0000" height="88.0000" rx="3.0" ry="3.0" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+  <rect id="card_2" x="137.7500" y="15.2500" width="63.0000" height="88.0000" rx="3.0" ry="3.0" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+  <rect id="card_3" x="9.2500" y="104.5000" width="63.0000" height="88.0000" rx="3.0" ry="3.0" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+  <rect id="card_4" x="73.5000" y="104.5000" width="63.0000" height="88.0000" rx="3.0" ry="3.0" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+  <rect id="card_5" x="137.7500" y="104.5000" width="63.0000" height="88.0000" rx="3.0" ry="3.0" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+  <rect id="card_6" x="9.2500" y="193.7500" width="63.0000" height="88.0000" rx="3.0" ry="3.0" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+  <rect id="card_7" x="73.5000" y="193.7500" width="63.0000" height="88.0000" rx="3.0" ry="3.0" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+  <rect id="card_8" x="137.7500" y="193.7500" width="63.0000" height="88.0000" rx="3.0" ry="3.0" fill="none" stroke="#FF0000" stroke-width="0.1"/>
+</svg>

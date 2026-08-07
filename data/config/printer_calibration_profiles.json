@@ -1,0 +1,38 @@
+{
+    "Default": {
+        "scale_x": 100.0,
+        "scale_y": 100.0,
+        "date_calibrated": "2026-07-12",
+        "notes": "No scale compensation applied"
+    },
+    "Epson L1800": {
+        "scale_x": 100.0,
+        "scale_y": 100.0,
+        "date_calibrated": "2026-07-12",
+        "notes": "Epson L1800 Default Profile"
+    },
+    "Mimaki UJF-3042": {
+        "scale_x": 100.0,
+        "scale_y": 100.0,
+        "date_calibrated": "2026-07-12",
+        "notes": "Mimaki UV Flatbed Default Profile"
+    },
+    "Roland LEF2": {
+        "scale_x": 100.0,
+        "scale_y": 100.0,
+        "date_calibrated": "2026-07-12",
+        "notes": "Roland LEF2 Desktop UV Default Profile"
+    },
+    "Canon TS8370": {
+        "scale_x": 100.0,
+        "scale_y": 100.0,
+        "date_calibrated": "2026-07-12",
+        "notes": "Canon TS Inkjet Default Profile"
+    },
+    "Custom": {
+        "scale_x": 100.0,
+        "scale_y": 100.0,
+        "date_calibrated": "2026-07-12",
+        "notes": "User-defined custom scaling compensation"
+    }
+}

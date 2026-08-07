@@ -1,0 +1,307 @@
+{
+    "project_dict": {
+        "version": 1,
+        "project_name": "testprint",
+        "layout": {
+            "id": "a4_9_cards_borderless",
+            "name": "A4 9 Cards (Borderless)",
+            "paper_size": {
+                "width_mm": 210.0,
+                "height_mm": 297.0
+            },
+            "card_size": {
+                "width_mm": 63.0,
+                "height_mm": 88.0,
+                "radius_mm": 3.0
+            },
+            "rows": 3,
+            "columns": 3,
+            "card_spacing_mm": 1.25,
+            "bleed_mm": 1.5,
+            "margins": {
+                "top_mm": 3.5,
+                "bottom_mm": 3.5,
+                "left_mm": 3.5,
+                "right_mm": 3.5
+            },
+            "registration": {
+                "pattern": "THREE",
+                "inset_mm": 3.5,
+                "length_mm": 5.0,
+                "thickness_mm": 1.0
+            }
+        },
+        "printer_profile": null,
+        "print_passes": [
+            "Base Artwork",
+            "White Ink",
+            "Emboss",
+            "Gloss"
+        ],
+        "disabled_passes": [
+            "Gloss"
+        ],
+        "card_slots": [
+            {
+                "slot_index": 0,
+                "filepath": "C:/Users/Dfault/Downloads/onepiece/TIFF/OP09-004(SP1) has dithering.TIFF",
+                "rotation": 0,
+                "mappings": {
+                    "1": "White Ink",
+                    "3": "Emboss",
+                    "Layer 1 - Red": "Base Artwork",
+                    "Layer 1 - Green": "Base Artwork",
+                    "Layer 1 - Blue": "Base Artwork",
+                    "Layer 1 - Alpha": "Base Artwork"
+                },
+                "disabled_channels": [],
+                "dither_settings": {
+                    "dither_mode": "Ordered Bayer",
+                    "dither_coverage": "60",
+                    "dither_angle": "45.0",
+                    "dither_lpi": "45.0",
+                    "dither_dot_shape": "Round",
+                    "dither_preserve_opaque": "true",
+                    "dither_duplicate_emboss": "true",
+                    "dither_texture_path": "",
+                    "dither_enabled": "true",
+                    "dither_algo": "Ordered Bayer",
+                    "dither_strength": "40"
+                }
+            },
+            {
+                "slot_index": 1,
+                "filepath": "C:/Users/Dfault/Downloads/onepiece/TIFF/OP09-093(SP1)  pattern - Copy.tiff",
+                "rotation": 0,
+                "mappings": {
+                    "1": "White Ink",
+                    "3": "Emboss",
+                    "base - Red": "Base Artwork",
+                    "base - Green": "Base Artwork",
+                    "base - Blue": "Base Artwork",
+                    "base - Alpha": "Base Artwork"
+                },
+                "disabled_channels": [],
+                "dither_settings": {
+                    "dither_mode": "Ordered Bayer",
+                    "dither_coverage": "42",
+                    "dither_angle": "45.0",
+                    "dither_lpi": "45.0",
+                    "dither_dot_shape": "Round",
+                    "dither_preserve_opaque": "true",
+                    "dither_duplicate_emboss": "true",
+                    "dither_texture_path": "",
+                    "dither_enabled": "true",
+                    "dither_algo": "Ordered Bayer",
+                    "dither_strength": "58"
+                }
+            },
+            {
+                "slot_index": 2,
+                "filepath": "C:/Users/Dfault/Downloads/onepiece/TIFF/OP09-093(SP1)  pattern - Copy.tiff",
+                "rotation": 0,
+                "mappings": {
+                    "1": "White Ink",
+                    "3": "Emboss",
+                    "base - Red": "Base Artwork",
+                    "base - Green": "Base Artwork",
+                    "base - Blue": "Base Artwork",
+                    "base - Alpha": "Base Artwork"
+                },
+                "disabled_channels": [],
+                "dither_settings": {
+                    "dither_mode": "Ordered Bayer",
+                    "dither_coverage": "55",
+                    "dither_angle": "45.0",
+                    "dither_lpi": "45.0",
+                    "dither_dot_shape": "Round",
+                    "dither_preserve_opaque": "true",
+                    "dither_duplicate_emboss": "true",
+                    "dither_texture_path": "",
+                    "dither_enabled": "true",
+                    "dither_algo": "Ordered Bayer",
+                    "dither_strength": "45"
+                }
+            },
+            {
+                "slot_index": 3,
+                "filepath": "C:/Users/Dfault/Downloads/onepiece/TIFF/mangaluffyop11.TIFF",
+                "rotation": 0,
+                "mappings": {
+                    "1": "White Ink",
+                    "3": "Emboss",
+                    "Layer 0 - Red": "Base Artwork",
+                    "Layer 0 - Green": "Base Artwork",
+                    "Layer 0 - Blue": "Base Artwork",
+                    "Layer 0 - Alpha": "Base Artwork"
+                },
+                "disabled_channels": [],
+                "dither_settings": {
+                    "dither_mode": "None",
+                    "dither_coverage": "85",
+                    "dither_angle": "45.0",
+                    "dither_lpi": "45.0",
+                    "dither_dot_shape": "Round",
+                    "dither_preserve_opaque": "true",
+                    "dither_duplicate_emboss": "false",
+                    "dither_texture_path": "",
+                    "dither_enabled": "false"
+                }
+            },
+            {
+                "slot_index": 4,
+                "filepath": "C:/Users/Dfault/Downloads/onepiece/TIFF/OP06-118 Mnaga Rare copy.TIFF",
+                "rotation": 0,
+                "mappings": {
+                    "3": "Emboss",
+                    "1": "White Ink",
+                    "Background - Red": "Base Artwork",
+                    "Background - Green": "Base Artwork",
+                    "Background - Blue": "Base Artwork"
+                },
+                "disabled_channels": [],
+                "dither_settings": {
+                    "dither_mode": "None",
+                    "dither_coverage": "85",
+                    "dither_angle": "45.0",
+                    "dither_lpi": "45.0",
+                    "dither_dot_shape": "Round",
+                    "dither_preserve_opaque": "true",
+                    "dither_duplicate_emboss": "false",
+                    "dither_texture_path": "",
+                    "dither_enabled": "false"
+                }
+            },
+            {
+                "slot_index": 5,
+                "filepath": "C:/Users/Dfault/Downloads/onepiece/TIFF/OP07-051manga alt copy.TIFF",
+                "rotation": 0,
+                "mappings": {
+                    "1": "White Ink",
+                    "3": "Emboss",
+                    "background - Red": "Base Artwork",
+                    "background - Green": "Base Artwork",
+                    "background - Blue": "Base Artwork",
+                    "background - Alpha": "Base Artwork"
+                },
+                "disabled_channels": [],
+                "dither_settings": {
+                    "dither_mode": "None",
+                    "dither_coverage": "85",
+                    "dither_angle": "45.0",
+                    "dither_lpi": "45.0",
+                    "dither_dot_shape": "Round",
+                    "dither_preserve_opaque": "true",
+                    "dither_duplicate_emboss": "false",
+                    "dither_texture_path": "",
+                    "dither_enabled": "false"
+                }
+            },
+            {
+                "slot_index": 6,
+                "filepath": "C:/Users/Dfault/Downloads/onepiece/TIFF/OP16-063 manga kuzan.TIFF",
+                "rotation": 0,
+                "mappings": {
+                    "1": "White Ink",
+                    "3": "Emboss",
+                    "Layer 1": "Base Artwork",
+                    "white ink copy": "Base Artwork",
+                    "white ink": "Base Artwork"
+                },
+                "disabled_channels": [],
+                "dither_settings": {
+                    "dither_mode": "None",
+                    "dither_coverage": "85",
+                    "dither_angle": "45.0",
+                    "dither_lpi": "45.0",
+                    "dither_dot_shape": "Round",
+                    "dither_preserve_opaque": "true",
+                    "dither_duplicate_emboss": "false",
+                    "dither_texture_path": "",
+                    "dither_enabled": "false"
+                }
+            },
+            {
+                "slot_index": 7,
+                "filepath": "C:/Users/Dfault/Downloads/onepiece/TIFF/OP16-063 Star.TIFF",
+                "rotation": 0,
+                "mappings": {
+                    "1": "White Ink",
+                    "3": "Emboss",
+                    "base - Red": "Base Artwork",
+                    "base - Green": "Base Artwork",
+                    "base - Blue": "Base Artwork",
+                    "base - Alpha": "Base Artwork",
+                    "white ink": "Base Artwork"
+                },
+                "disabled_channels": [],
+                "dither_settings": {
+                    "dither_mode": "None",
+                    "dither_coverage": "85",
+                    "dither_angle": "45.0",
+                    "dither_lpi": "45.0",
+                    "dither_dot_shape": "Round",
+                    "dither_preserve_opaque": "true",
+                    "dither_duplicate_emboss": "false",
+                    "dither_texture_path": "",
+                    "dither_enabled": "false"
+                }
+            },
+            {
+                "slot_index": 8,
+                "filepath": "C:/Users/Dfault/Downloads/onepiece/TIFF/eb02luffy.TIFF",
+                "rotation": 0,
+                "mappings": {
+                    "1": "White Ink",
+                    "3": "Emboss",
+                    "Background - Red": "Base Artwork",
+                    "Background - Green": "Base Artwork",
+                    "Background - Blue": "Base Artwork",
+                    "Background copy - Red": "Base Artwork",
+                    "Background copy - Green": "Base Artwork",
+                    "Background copy - Blue": "Base Artwork",
+                    "Background copy - Alpha": "Base Artwork",
+                    "Background copy 2 - Red": "Base Artwork",
+                    "Background copy 2 - Green": "Base Artwork",
+                    "Background copy 2 - Blue": "Base Artwork",
+                    "Background copy 2 - Alpha": "Base Artwork"
+                },
+                "disabled_channels": [],
+                "dither_settings": {
+                    "dither_mode": "None",
+                    "dither_coverage": "80",
+                    "dither_angle": "45.0",
+                    "dither_lpi": "45.0",
+                    "dither_dot_shape": "Round",
+                    "dither_preserve_opaque": "true",
+                    "dither_duplicate_emboss": "false",
+                    "dither_texture_path": "",
+                    "dither_enabled": "false",
+                    "dither_algo": "FM Blue Noise",
+                    "dither_strength": "20"
+                }
+            }
+        ],
+        "export_settings": {
+            "preserve_channel_names": "true",
+            "dither_enabled": "false",
+            "dither_algo": "Ordered Bayer",
+            "dither_strength": "15",
+            "dither_preserve_opaque": "true",
+            "active_printer_profile": "Default",
+            "printer_compensation_x": "100.0",
+            "printer_compensation_y": "100.0"
+        }
+    },
+    "project_path": "C:/Users/Dfault/Downloads/testprint.optcgproject",
+    "active_slot_index": 1,
+    "view_mode": "Emboss Only",
+    "zoom_level": 1.74900625,
+    "center_x": 551.170128751684,
+    "center_y": 373.3548693722507,
+    "splitter_sizes": [
+        338,
+        1097
+    ],
+    "window_geometry": "01d9d0cb0003000000000000fffffffa0000059f00000354000000060000001c000004f80000029e000000000200000005a000000000000000170000059f00000354"
+}
