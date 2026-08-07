@@ -239,23 +239,6 @@ def get_default_layouts() -> List[Layout]:
     """Returns standard, predefined card print layouts matching SCM specifications."""
     return [
         Layout(
-            id="a4_8_cards_standard",
-            name="A4 8 Cards (Standard)",
-            paper_size=PaperSize(width_mm=297.0, height_mm=210.0), # Landscape
-            card_size=CardSize(width_mm=63.0, height_mm=88.0, radius_mm=3.0),
-            rows=2,
-            columns=4,
-            card_spacing_mm=1.25,
-            bleed_mm=1.5,
-            margins=MarginSettings(top_mm=10.0, bottom_mm=10.0, left_mm=10.0, right_mm=10.0),
-            registration=RegistrationSettings(
-                pattern=RegistrationPattern.THREE,
-                inset_mm=10.0,
-                length_mm=9.4,
-                thickness_mm=1.0
-            )
-        ),
-        Layout(
             id="a4_9_cards_borderless",
             name="A4 9 Cards (Borderless)",
             paper_size=PaperSize(width_mm=210.0, height_mm=297.0), # Portrait
@@ -269,6 +252,23 @@ def get_default_layouts() -> List[Layout]:
                 pattern=RegistrationPattern.THREE,
                 inset_mm=3.5,
                 length_mm=5.0,
+                thickness_mm=1.0
+            )
+        ),
+        Layout(
+            id="a4_8_cards_standard",
+            name="A4 8 Cards (Standard)",
+            paper_size=PaperSize(width_mm=297.0, height_mm=210.0), # Landscape
+            card_size=CardSize(width_mm=63.0, height_mm=88.0, radius_mm=3.0),
+            rows=2,
+            columns=4,
+            card_spacing_mm=1.25,
+            bleed_mm=1.5,
+            margins=MarginSettings(top_mm=10.0, bottom_mm=10.0, left_mm=10.0, right_mm=10.0),
+            registration=RegistrationSettings(
+                pattern=RegistrationPattern.THREE,
+                inset_mm=10.0,
+                length_mm=9.4,
                 thickness_mm=1.0
             )
         ),

@@ -1485,13 +1485,13 @@ class MainWindow(QMainWindow):
             
             # Map standard SCM names to our layout IDs
             matched_id = None
-            if paper == "a4" and card == "standard":
-                if variant == "borderless":
+            if paper == "a4" and card in ("standard", "poker"):
+                if "borderless" in variant:
                     matched_id = "a4_9_cards_borderless"
                 else:
                     matched_id = "a4_8_cards_standard"
-            elif paper == "letter" and card == "standard":
-                if variant == "borderless":
+            elif paper == "letter" and card in ("standard", "poker"):
+                if "borderless" in variant:
                     matched_id = "letter_9_cards_borderless"
                 else:
                     matched_id = "letter_8_cards_standard"
