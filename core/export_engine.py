@@ -509,22 +509,24 @@ def export_project(project: Project, output_path: str, export_type: str, ppi: in
         if len(channels_list) == 1:
             stacked_arr = channels_list[0]
             photometric = 'minisblack'
-            num_extra = 0
-        elif len(channels_list) == 2 and not is_base_enabled:
-            stacked_arr = np.stack(channels_list, axis=-1)
-            photometric = 'minisblack'
-            num_extra = 1
         else:
             stacked_arr = np.stack(channels_list, axis=-1)
             photometric = 'rgb' if is_base_enabled else 'minisblack'
-            num_extra = len(channels_list) - (3 if is_base_enabled else 1)
-            
-        if is_base_enabled:
-            extra_samples = [2] + [0] * len(extra_names)
-            all_extra_names = ["Alpha"] + extra_names
+
+        total_ch = stacked_arr.shape[-1] if len(stacked_arr.shape) == 3 else 1
+        base_ch = 3 if photometric == 'rgb' else 1
+        num_extra = max(0, total_ch - base_ch)
+
+        if num_extra > 0:
+            if photometric == 'rgb':
+                extra_samples = [2] + [0] * (num_extra - 1)
+                all_extra_names = ["Alpha"] + extra_names[:num_extra - 1]
+            else:
+                extra_samples = [0] * num_extra
+                all_extra_names = extra_names[:num_extra]
         else:
-            extra_samples = [0] * len(extra_names)
-            all_extra_names = extra_names
+            extra_samples = None
+            all_extra_names = []
 
         extratags = []
         if all_extra_names:
@@ -752,16 +754,27 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
         if not channels_list:
             continue
 
-        stacked_arr = np.stack(channels_list, axis=-1)
-        photometric = 'rgb' if is_base_enabled else 'minisblack'
-        
-        # Build extra names list: include "Alpha" name entry if base artwork has Alpha channel
-        if is_base_enabled:
-            extra_samples = [2] + [0] * len(extra_names)
-            all_extra_names = ["Alpha"] + extra_names
+        if len(channels_list) == 1:
+            stacked_arr = channels_list[0]
+            photometric = 'minisblack'
         else:
-            extra_samples = [0] * len(extra_names)
-            all_extra_names = extra_names
+            stacked_arr = np.stack(channels_list, axis=-1)
+            photometric = 'rgb' if is_base_enabled else 'minisblack'
+        
+        total_ch = stacked_arr.shape[-1] if len(stacked_arr.shape) == 3 else 1
+        base_ch = 3 if photometric == 'rgb' else 1
+        num_extra = max(0, total_ch - base_ch)
+
+        if num_extra > 0:
+            if photometric == 'rgb':
+                extra_samples = [2] + [0] * (num_extra - 1)
+                all_extra_names = ["Alpha"] + extra_names[:num_extra - 1]
+            else:
+                extra_samples = [0] * num_extra
+                all_extra_names = extra_names[:num_extra]
+        else:
+            extra_samples = None
+            all_extra_names = []
 
         extratags = []
         if all_extra_names:
