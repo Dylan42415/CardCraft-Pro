@@ -1,9 +1,7 @@
 import os
-import subprocess
 import numpy as np
 from PIL import Image, ImageDraw
 
-INKSCAPE_PATH = r"C:\Program Files\Inkscape\bin\inkscape.com"
 TEXTURES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "textures")
 os.makedirs(TEXTURES_DIR, exist_ok=True)
 

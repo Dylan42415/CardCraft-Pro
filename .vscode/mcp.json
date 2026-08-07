@@ -1,18 +1,3 @@
 {
-  "mcpServers": {
-    "photoshop": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@alisaitteke/photoshop-mcp"
-      ]
-    },
-    "inkscape": {
-      "command": "python",
-      "args": [
-        "-m",
-        "inkscape_mcp"
-      ]
-    }
-  }
+  "mcpServers": {}
 }
