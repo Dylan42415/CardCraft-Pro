@@ -1,6 +1,6 @@
 # 🎴 CardCraft Pro
 
-**CardCraft Pro** is a high-precision Trading Card Game (TCG) prepress and spot-channel generation suite designed for professional TCG card creation, spot varnish/embossing, white ink dithering, vector texture synthesis, and sheet layout printing.
+**CardCraft Pro** is a high-precision Trading Card Game (TCG) prepress and spot-channel generation suite designed for professional TCG card creation, spot varnish/embossing, white ink dithering, preset vector texture overlays, and sheet layout printing.
 
 ---
 
