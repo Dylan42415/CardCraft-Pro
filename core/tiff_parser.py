@@ -34,8 +34,8 @@ def get_page_name(page: tifffile.TiffPage, default_name: str) -> str:
             val_str = val.strip()
         else:
             val_str = ""
-        # Keep it short if it's a real name
-        if val_str and len(val_str) < 50 and "\n" not in val_str:
+        # Keep it short if it's a real name and ignore JSON metadata (e.g. {"shape": ...})
+        if val_str and not val_str.startswith("{") and len(val_str) < 50 and "\n" not in val_str:
             return val_str
 
     return default_name
@@ -242,7 +242,32 @@ def parse_tiff_channels(filepath: str) -> List[TIFFChannelInfo]:
                     else:
                         channel_names = ["Red", "Green", "Blue", "Alpha"]
                 else:
-                    channel_names = [f"Channel {i}" for i in range(num_ch)]
+                    extra_names = []
+                    tag34377 = page.tags.get(34377)
+                    if tag34377:
+                        try:
+                            val = tag34377.value
+                            if isinstance(val, bytes) and val.startswith(b'8BIM'):
+                                data = val[12:]
+                                idx = 0
+                                while idx < len(data):
+                                    slen = data[idx]
+                                    if slen > 0 and idx + 1 + slen <= len(data):
+                                        extra_names.append(data[idx+1:idx+1+slen].decode('latin1', errors='ignore'))
+                                        idx += 1 + slen
+                                    else:
+                                        break
+                        except Exception:
+                            pass
+
+                    channel_names = ["Red", "Green", "Blue"]
+                    for i in range(3, num_ch):
+                        extra_idx = i - 3
+                        if extra_idx < len(extra_names):
+                            channel_names.append(extra_names[extra_idx])
+                        else:
+                            name_fallback = "Alpha" if i == 3 else f"Channel {i}"
+                            channel_names.append(name_fallback)
 
                 # Prepend page name if it's specific
                 prefix = f"{page_name} - " if "Page" not in page_name else ""
@@ -491,6 +516,8 @@ def render_preview_rgb(
             if dither_settings.get("dither_duplicate_emboss") == "true" and emboss_channel:
                 e_arr = load_channel_array(filepath, emboss_channel)
                 w_arr = dithering.compose_white_channel(w_arr, e_arr, dither_settings)
+        
+        w_arr[outside_corners] = 255
         # Create light cyan-blue tint for white ink: RGB=(200, 220, 255) with variable alpha
         w_tint = np.zeros((h, w, 4), dtype=np.uint8)
         w_tint[..., 0] = 200 # R

@@ -140,3 +140,28 @@ def test_draw_registration_marks(sample_project):
     assert reg_img is not None
     assert reg_img.size[0] > 1000 and reg_img.size[1] > 1000
     assert reg_img.mode == "RGBA"
+
+
+def test_channel_1_corner_white(sample_project, temp_export_dir):
+    # Set dither mode to Bayer on slot 0
+    sample_project.card_slots[0].dither_settings = {
+        "dither_mode": "Ordered Bayer",
+        "dither_coverage": "85.0"
+    }
+    out_dir = os.path.join(temp_export_dir, "dithered_cards")
+    paths, _ = export_engine.export_individual_cards(sample_project, out_dir, ppi=300)
+    
+    card_path = paths[0]
+    with tifffile.TiffFile(card_path) as tf:
+        arr = tf.series[0].asarray()
+        
+        # Channel 4 is Spot Channel 1 (White Ink)
+        white_ch = arr[..., 4]
+        h, w = white_ch.shape
+        corner_mask = export_engine.create_card_corner_mask(w, h, 3.0, 300)
+        outside = (corner_mask == 0)
+        
+        # Assert ALL pixels outside 3mm corner radius are 255 (pure white / 0% ink)
+        outside_vals = white_ch[outside]
+        assert np.all(outside_vals == 255), f"Found non-white pixels in 3mm corner cutouts for Channel 1: unique={np.unique(outside_vals)}"
+

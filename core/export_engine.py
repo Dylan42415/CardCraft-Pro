@@ -133,6 +133,11 @@ def compile_sheet_pass(
                     # Use NEAREST resampling to preserve binary pixel bounds and prevent anti-aliasing
                     spot_img_resized = spot_img.resize((w_card, h_card), Image.Resampling.NEAREST)
                     spot_arr = np.array(spot_img_resized)
+
+                    radius_mm = project.layout.card_size.radius_mm
+                    corner_mask = create_card_corner_mask(w_card, h_card, radius_mm, ppi)
+                    outside_corners = (corner_mask == 0)
+                    spot_arr[outside_corners] = 255
                     
                     # Shape validation check
                     if spot_arr.shape != (h_card, w_card):
@@ -715,6 +720,7 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
                 spot_img = Image.fromarray(raw_spot, mode="L")
                 spot_img_resized = spot_img.resize((w_px, h_px), Image.Resampling.NEAREST)
                 spot_arr = np.array(spot_img_resized)
+                spot_arr[outside_corners] = 255
 
                 from core import dithering
 
