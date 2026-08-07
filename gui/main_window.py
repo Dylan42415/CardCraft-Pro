@@ -10,12 +10,9 @@ from core import layout_engine
 from core import project_manager
 from core import tiff_parser
 from core import export_engine
-from PySide6.QtCore import Qt, QRectF, QPointF, QThreadPool
 from gui.canvas_view import InteractiveCanvasView
 from gui.mapping_panel import MappingPanel
 from gui.layout_dialog import LayoutDialog
-from gui.export_worker import ExportSheetWorker, ExportCardsWorker
-from gui.card_loader_worker import CardPreviewTask
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -45,9 +42,6 @@ class MainWindow(QMainWindow):
         self.view_mode = "Combined" # Combined, Artwork, White, Gloss, Emboss
         self.ppi = 150 # Preview resolution (fast and crisp enough)
         self._preview_cache = {}
-        self._reg_pixmap_cache = None
-        self.thread_pool = QThreadPool.globalInstance()
-        self._pending_tasks = set()
 
         # Setup main layout
         self.central_widget = QWidget(self)
@@ -879,9 +873,6 @@ class MainWindow(QMainWindow):
         slot = self.project.card_slots[self.active_slot_index]
         slot.filepath = None
         slot.mappings = {}
-        slot.disabled_channels = set()
-        if self.active_slot_index in self._preview_cache:
-            del self._preview_cache[self.active_slot_index]
         self.mapping_panel.show_no_card_selected()
         self.render_canvas()
 
@@ -1066,21 +1057,6 @@ class MainWindow(QMainWindow):
         rotation_val = p_slot.rotation
         return (p_slot.filepath, view_mode, mappings_tuple, disabled_tuple, dither_tuple, rotation_val)
 
-    def _on_card_preview_finished(self, s_idx: int, cache_key: tuple, card_preview):
-        try:
-            if s_idx in self._pending_tasks:
-                self._pending_tasks.remove(s_idx)
-            
-            if card_preview is not None:
-                card_data = card_preview.convert("RGBA").tobytes("raw", "RGBA")
-                c_h, c_w = card_preview.height, card_preview.width
-                q_c_img = QImage(card_data, c_w, c_h, QImage.Format.Format_RGBA8888)
-                pixmap_card = QPixmap.fromImage(q_c_img)
-                self._preview_cache[s_idx] = (cache_key, pixmap_card)
-                self.render_canvas()
-        except Exception as e:
-            print(f"Async preview update failed for slot {s_idx}: {e}")
-
     # High-performance Canvas Rendering
     def render_canvas(self):
         # 1. Compute pixel sizes based on PPI
@@ -1100,16 +1076,12 @@ class MainWindow(QMainWindow):
         sheet_rect.setPen(QPen(QColor("#2d2d39"), 1))
         scene.addItem(sheet_rect)
 
-        # 3. Render and draw registration marks (cached to prevent allocation lags)
-        reg_cache_key = (self.project.layout.id, page_w, page_h, self.ppi)
-        if getattr(self, "_reg_pixmap_cache", None) and self._reg_pixmap_cache[0] == reg_cache_key:
-            pixmap_reg = self._reg_pixmap_cache[1]
-        else:
-            reg_img = layout_engine.draw_registration_marks(self.project.layout, self.ppi)
-            reg_data = reg_img.convert("RGBA").tobytes("raw", "RGBA")
-            q_img = QImage(reg_data, page_w, page_h, QImage.Format.Format_RGBA8888)
-            pixmap_reg = QPixmap.fromImage(q_img)
-            self._reg_pixmap_cache = (reg_cache_key, pixmap_reg)
+        # 3. Render and draw registration marks
+        reg_img = layout_engine.draw_registration_marks(self.project.layout, self.ppi)
+        # Convert PIL to QImage to QPixmap
+        reg_data = reg_img.convert("RGBA").tobytes("raw", "RGBA")
+        q_img = QImage(reg_data, page_w, page_h, QImage.Format.Format_RGBA8888).copy()
+        pixmap_reg = QPixmap.fromImage(q_img)
         
         reg_item = QGraphicsPixmapItem(pixmap_reg)
         scene.addItem(reg_item)
@@ -1149,32 +1121,36 @@ class MainWindow(QMainWindow):
                     if cached_entry and cached_entry[0] == cache_key:
                         pixmap_card = cached_entry[1]
                     else:
-                        pixmap_card = cached_entry[1] if cached_entry else None
-                        if s_idx not in self._pending_tasks:
-                            self._pending_tasks.add(s_idx)
-                            bg = (255, 255, 255) if self.view_mode in ("Combined", "Artwork Only") else (0, 0, 0)
-                            task = CardPreviewTask(
-                                s_idx, p_slot.filepath, p_slot.mappings, visible_layers,
-                                self.view_mode, bg, p_slot.dither_settings, cache_key
-                            )
-                            task.signals.finished.connect(self._on_card_preview_finished)
-                            self.thread_pool.start(task)
+                        channels = tiff_parser.parse_tiff_channels(p_slot.filepath)
+                        # Set background depending on view mode (combined=white, single-mask=black for contrast)
+                        bg = (255, 255, 255) if self.view_mode in ("Combined", "Artwork Only") else (0, 0, 0)
+                        
+                        card_preview = tiff_parser.render_preview_rgb(
+                            p_slot.filepath, channels, p_slot.mappings, visible_layers, bg,
+                            dither_settings=p_slot.dither_settings
+                        )
+                        
+                        # Convert to QPixmap
+                        card_data = card_preview.convert("RGBA").tobytes("raw", "RGBA")
+                        c_h, c_w = card_preview.height, card_preview.width
+                        q_c_img = QImage(card_data, c_w, c_h, QImage.Format.Format_RGBA8888).copy()
+                        pixmap_card = QPixmap.fromImage(q_c_img)
+                        self._preview_cache[s_idx] = (cache_key, pixmap_card)
 
-                    if pixmap_card:
-                        # Scale the pixmap directly to the slot dimensions
-                        scaled_pixmap = pixmap_card.scaled(int(sw), int(sh), Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                        
-                        card_item = QGraphicsPixmapItem(scaled_pixmap)
-                        card_item.setTransformationMode(Qt.TransformationMode.SmoothTransformation)
-                        
-                        # Set rotation pivot center to the center of the slot
-                        card_item.setTransformOriginPoint(sw / 2, sh / 2)
-                        card_item.setRotation(p_slot.rotation)
-                        
-                        # Position slot
-                        card_item.setPos(sx, sy)
-                        card_item.setData(0, s_idx) # Store slot index
-                        scene.addItem(card_item)
+                    # Scale the pixmap directly to the slot dimensions
+                    scaled_pixmap = pixmap_card.scaled(int(sw), int(sh), Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                    
+                    card_item = QGraphicsPixmapItem(scaled_pixmap)
+                    card_item.setTransformationMode(Qt.TransformationMode.SmoothTransformation)
+                    
+                    # Set rotation pivot center to the center of the slot
+                    card_item.setTransformOriginPoint(sw / 2, sh / 2)
+                    card_item.setRotation(p_slot.rotation)
+                    
+                    # Position slot
+                    card_item.setPos(sx, sy)
+                    card_item.setData(0, s_idx) # Store slot index
+                    scene.addItem(card_item)
                 except Exception as e:
                     print(f"Error rendering card slot {s_idx}: {e}")
 
@@ -1412,15 +1388,13 @@ class MainWindow(QMainWindow):
     def export_individual_cards_dialog(self):
         if not self.validate_project_before_export():
             return
-        output_dir = QFileDialog.getExistingDirectory(self, "Select Directory to Save Individual Card TIFFs")
+        output_dir = QFileDialog.getExistingDirectory(self, "Select Directory to Save 9 Individual Card TIFFs")
         if output_dir:
-            self.statusBar().showMessage("Rendering individual 600 PPI card TIFF files in background...")
-            
-            self.card_export_worker = ExportCardsWorker(self.project, output_dir, parent=self)
-            self.card_export_worker.progress_updated.connect(
-                lambda current, total, msg: self.statusBar().showMessage(f"[{current}/{total}] {msg}")
-            )
-            def on_finished(paths):
+            self.statusBar().showMessage("Rendering individual 600 PPI card TIFF files...")
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            try:
+                paths, validation_reports = export_engine.export_individual_cards(self.project, output_dir, 600)
+                QApplication.restoreOverrideCursor()
                 if paths:
                     QMessageBox.information(
                         self, 
@@ -1430,13 +1404,10 @@ class MainWindow(QMainWindow):
                     self.statusBar().showMessage(f"Exported {len(paths)} card TIFF files successfully.", 4000)
                 else:
                     QMessageBox.warning(self, "No Cards Exported", "No card files were assigned to slots.")
-            def on_failed(err_msg):
-                QMessageBox.critical(self, "Export Failed", f"Failed to export individual cards:\n{err_msg}")
+            except Exception as e:
+                QApplication.restoreOverrideCursor()
+                QMessageBox.critical(self, "Export Failed", f"Failed to export individual cards:\n{e}")
                 self.statusBar().showMessage("Individual cards export failed.", 4000)
-
-            self.card_export_worker.export_finished.connect(on_finished)
-            self.card_export_worker.export_failed.connect(on_failed)
-            self.card_export_worker.start()
 
     def batch_load_cards_files(self):
         filepaths, _ = QFileDialog.getOpenFileNames(
@@ -1500,13 +1471,13 @@ class MainWindow(QMainWindow):
             
             # Map standard SCM names to our layout IDs
             matched_id = None
-            if paper == "a4" and card in ("standard", "poker"):
-                if "borderless" in variant:
+            if paper == "a4" and card == "standard":
+                if variant == "borderless":
                     matched_id = "a4_9_cards_borderless"
                 else:
                     matched_id = "a4_8_cards_standard"
-            elif paper == "letter" and card in ("standard", "poker"):
-                if "borderless" in variant:
+            elif paper == "letter" and card == "standard":
+                if variant == "borderless":
                     matched_id = "letter_9_cards_borderless"
                 else:
                     matched_id = "letter_8_cards_standard"

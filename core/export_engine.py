@@ -97,14 +97,6 @@ def compile_sheet_pass(
                 if slot_state.rotation != 0:
                     card_img = card_img.rotate(360 - slot_state.rotation, expand=False, fillcolor=(255, 255, 255, 0))
 
-                card_arr = np.array(card_img)
-                radius_mm = project.layout.card_size.radius_mm
-                corner_mask = create_card_corner_mask(w_card, h_card, radius_mm, ppi)
-                outside_corners = (corner_mask == 0)
-                card_arr[outside_corners, 0:3] = 255
-                card_arr[outside_corners, 3] = 0
-                card_img = Image.fromarray(card_arr, mode="RGBA")
-
                 # Paste into sheet canvas using PIL alpha pasting
                 sheet_img = Image.fromarray(sheet_arr, mode="RGBA")
                 sheet_img.paste(card_img, (sx, sy), card_img)
@@ -133,11 +125,6 @@ def compile_sheet_pass(
                     # Use NEAREST resampling to preserve binary pixel bounds and prevent anti-aliasing
                     spot_img_resized = spot_img.resize((w_card, h_card), Image.Resampling.NEAREST)
                     spot_arr = np.array(spot_img_resized)
-
-                    radius_mm = project.layout.card_size.radius_mm
-                    corner_mask = create_card_corner_mask(w_card, h_card, radius_mm, ppi)
-                    outside_corners = (corner_mask == 0)
-                    spot_arr[outside_corners] = 255
                     
                     # Shape validation check
                     if spot_arr.shape != (h_card, w_card):
@@ -248,11 +235,6 @@ def compile_sheet_pass(
                             rot_report = validate_binary_channel(spot_arr, target_pass, f"Slot {s_idx} - Rotated")
                             validation_reports.append(rot_report)
                         
-                    radius_mm = project.layout.card_size.radius_mm
-                    corner_mask = create_card_corner_mask(w_card, h_card, radius_mm, ppi)
-                    outside_corners = (corner_mask == 0)
-                    spot_arr[outside_corners] = 255
-
                     sheet_arr[sy:sy+h_card, sx:sx+w_card] = spot_arr
         except Exception as e:
             print(f"Error compiling slot {s_idx} for pass '{target_pass}': {e}")
@@ -527,21 +509,18 @@ def export_project(project: Project, output_path: str, export_type: str, ppi: in
         if len(channels_list) == 1:
             stacked_arr = channels_list[0]
             photometric = 'minisblack'
-            extra_samples = None
-            all_extra_names = []
+            num_extra = 0
+        elif len(channels_list) == 2 and not is_base_enabled:
+            stacked_arr = np.stack(channels_list, axis=-1)
+            photometric = 'minisblack'
+            num_extra = 1
         else:
             stacked_arr = np.stack(channels_list, axis=-1)
             photometric = 'rgb' if is_base_enabled else 'minisblack'
-            total_ch = stacked_arr.shape[-1]
-            base_ch = 3 if photometric == 'rgb' else 1
-            num_extra = max(0, total_ch - base_ch)
-
-            if num_extra > 0:
-                extra_samples = [0] * num_extra
-                all_extra_names = list(extra_names) if is_base_enabled else (extra_names[1:] if len(extra_names) > 1 else extra_names)
-            else:
-                extra_samples = None
-                all_extra_names = []
+            num_extra = len(channels_list) - (3 if is_base_enabled else 1)
+            
+        extra_samples = [0] * len(extra_names)
+        all_extra_names = extra_names
 
         extratags = []
         if all_extra_names:
@@ -720,7 +699,6 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
                 spot_img = Image.fromarray(raw_spot, mode="L")
                 spot_img_resized = spot_img.resize((w_px, h_px), Image.Resampling.NEAREST)
                 spot_arr = np.array(spot_img_resized)
-                spot_arr[outside_corners] = 255
 
                 from core import dithering
 
@@ -770,29 +748,16 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
         if not channels_list:
             continue
 
-        if len(channels_list) == 1:
-            stacked_arr = channels_list[0]
-            photometric = 'minisblack'
-            extra_samples = None
-            all_extra_names = []
+        stacked_arr = np.stack(channels_list, axis=-1)
+        photometric = 'rgb' if is_base_enabled else 'minisblack'
+        
+        # Build extra names list: include "Alpha" name entry if base artwork has Alpha channel
+        if is_base_enabled:
+            extra_samples = [2] + [0] * len(extra_names)
+            all_extra_names = ["Alpha"] + extra_names
         else:
-            stacked_arr = np.stack(channels_list, axis=-1)
-            photometric = 'rgb' if is_base_enabled else 'minisblack'
-            total_ch = stacked_arr.shape[-1]
-            base_ch = 3 if photometric == 'rgb' else 1
-            num_extra = max(0, total_ch - base_ch)
-
-            if num_extra > 0:
-                if photometric == 'rgb':
-                    # Channel 4 is Alpha (sample type 2), followed by spot channels (sample type 0)
-                    extra_samples = [2] + [0] * len(extra_names)
-                    all_extra_names = ["Alpha"] + list(extra_names)
-                else:
-                    extra_samples = [0] * num_extra
-                    all_extra_names = list(extra_names)
-            else:
-                extra_samples = None
-                all_extra_names = []
+            extra_samples = [0] * len(extra_names)
+            all_extra_names = extra_names
 
         extratags = []
         if all_extra_names:

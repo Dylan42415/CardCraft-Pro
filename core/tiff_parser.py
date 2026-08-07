@@ -34,8 +34,8 @@ def get_page_name(page: tifffile.TiffPage, default_name: str) -> str:
             val_str = val.strip()
         else:
             val_str = ""
-        # Keep it short if it's a real name and ignore JSON metadata (e.g. {"shape": ...})
-        if val_str and not val_str.startswith("{") and len(val_str) < 50 and "\n" not in val_str:
+        # Keep it short if it's a real name
+        if val_str and len(val_str) < 50 and "\n" not in val_str:
             return val_str
 
     return default_name
@@ -237,40 +237,37 @@ def parse_tiff_channels(filepath: str) -> List[TIFFChannelInfo]:
                     if photometric and photometric.value == 5: # CMYK
                         is_cmyk = True
                     
-                    if is_cmyk:
-                        channel_names = ["Cyan", "Magenta", "Yellow", "Black"]
-                    else:
-                        channel_names = ["Red", "Green", "Blue", "Alpha"]
                 else:
+                    channel_names = ["Red", "Green", "Blue", "Alpha"]
                     extra_names = []
-                    tag34377 = page.tags.get(34377)
-                    if tag34377:
+                    if 34377 in page.tags:
                         try:
-                            val = tag34377.value
-                            if isinstance(val, bytes) and val.startswith(b'8BIM'):
-                                data = val[12:]
-                                idx = 0
-                                while idx < len(data):
-                                    slen = data[idx]
-                                    if slen > 0 and idx + 1 + slen <= len(data):
-                                        extra_names.append(data[idx+1:idx+1+slen].decode('latin1', errors='ignore'))
-                                        idx += 1 + slen
-                                    else:
-                                        break
+                            tag_bytes = page.tags[34377].value
+                            if isinstance(tag_bytes, bytes) and b'8BIM' in tag_bytes:
+                                idx = tag_bytes.find(b'8BIM\x03\xee')
+                                if idx != -1:
+                                    block_data = tag_bytes[idx+12:]
+                                    pos = 0
+                                    while pos < len(block_data):
+                                        l = block_data[pos]
+                                        if l == 0 or pos + 1 + l > len(block_data):
+                                            break
+                                        n = block_data[pos+1:pos+1+l].decode('utf-8', errors='ignore')
+                                        extra_names.append(n)
+                                        pos += 1 + l
                         except Exception:
                             pass
-
-                    channel_names = ["Red", "Green", "Blue"]
-                    for i in range(3, num_ch):
-                        extra_idx = i - 3
-                        if extra_idx < len(extra_names):
-                            channel_names.append(extra_names[extra_idx])
+                    
+                    for i in range(4, num_ch):
+                        if extra_names and i - 3 < len(extra_names):
+                            channel_names.append(extra_names[i - 3])
+                        elif extra_names and i - 4 < len(extra_names):
+                            channel_names.append(extra_names[i - 4])
                         else:
-                            name_fallback = "Alpha" if i == 3 else f"Channel {i}"
-                            channel_names.append(name_fallback)
+                            channel_names.append(f"Channel {i}")
 
-                # Prepend page name if it's specific
-                prefix = f"{page_name} - " if "Page" not in page_name else ""
+                # Prepend page name if there are multiple pages and page name is specific
+                prefix = f"{page_name} - " if (len(tif.pages) > 1 and "Page" not in page_name) else ""
 
                 for c_idx in range(num_ch):
                     name = f"{prefix}{channel_names[c_idx]}"
@@ -466,22 +463,12 @@ def render_preview_rgb(
     # Base alpha (defaults to fully opaque 255)
     a_arr = load_channel_array(filepath, art_channels['A']) if 'A' in art_channels else np.full((h, w), 255, dtype=np.uint8)
 
-    # 3mm corner radius mask for card previews
-    ppi_val = get_tiff_ppi(filepath)
-    r_px = max(1, round((3.0 / 25.4) * ppi_val))
-    c_mask_img = Image.new("L", (w, h), 0)
-    draw = ImageDraw.Draw(c_mask_img)
-    draw.rounded_rectangle([0, 0, w - 1, h - 1], radius=r_px, fill=255)
-    outside_corners = (np.array(c_mask_img) == 0)
-
-    r_arr[outside_corners] = background_color[0]
-    g_arr[outside_corners] = background_color[1]
-    b_arr[outside_corners] = background_color[2]
-    a_arr[outside_corners] = 0
-
     base_img = Image.fromarray(np.stack([r_arr, g_arr, b_arr, a_arr], axis=-1), mode="RGBA")
 
     # 3. Apply overlays (White Ink, Gloss, Emboss) as semi-transparent color washes
+    # White Ink: Rendered as a light blue-tinted overlay (since white on white is invisible)
+    # Gloss: Rendered as a glossy cyan overlay
+    # Emboss: Rendered as a dark gray shadow/embossed mask
     preview_composite = Image.new("RGBA", (w, h), background_color + (255,))
     preview_composite.paste(base_img, (0, 0), base_img)
 
@@ -489,7 +476,6 @@ def render_preview_rgb(
 
     if white_channel:
         w_arr = load_channel_array(filepath, white_channel)
-        w_arr[outside_corners] = 255
         if dither_settings:
             dither_mode = dither_settings.get("dither_mode")
             if dither_mode is None:
@@ -516,8 +502,6 @@ def render_preview_rgb(
             if dither_settings.get("dither_duplicate_emboss") == "true" and emboss_channel:
                 e_arr = load_channel_array(filepath, emboss_channel)
                 w_arr = dithering.compose_white_channel(w_arr, e_arr, dither_settings)
-        
-        w_arr[outside_corners] = 255
         # Create light cyan-blue tint for white ink: RGB=(200, 220, 255) with variable alpha
         w_tint = np.zeros((h, w, 4), dtype=np.uint8)
         w_tint[..., 0] = 200 # R
@@ -529,7 +513,6 @@ def render_preview_rgb(
 
     if gloss_channel:
         g_arr = load_channel_array(filepath, gloss_channel)
-        g_arr[outside_corners] = 255
         # Create vibrant yellow/gold tint for gloss/varnish: RGB=(255, 235, 150)
         g_tint = np.zeros((h, w, 4), dtype=np.uint8)
         g_tint[..., 0] = 255
@@ -541,7 +524,6 @@ def render_preview_rgb(
 
     if emboss_channel:
         e_arr = load_channel_array(filepath, emboss_channel)
-        e_arr[outside_corners] = 255
         # Create emboss/height mask (magenta/purple tint): RGB=(220, 100, 220)
         e_tint = np.zeros((h, w, 4), dtype=np.uint8)
         e_tint[..., 0] = 220

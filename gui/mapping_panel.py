@@ -162,32 +162,17 @@ class MappingPanel(QWidget):
         self.combo_dither_mode.currentTextChanged.connect(self.on_mode_changed)
         dither_layout.addWidget(self.combo_dither_mode)
         
-        # Custom Texture preset chooser layout
+        # Custom Texture file chooser layout
         self.texture_container = QWidget()
-        tex_layout = QVBoxLayout(self.texture_container)
+        tex_layout = QHBoxLayout(self.texture_container)
         tex_layout.setContentsMargins(0, 0, 0, 0)
         tex_layout.setSpacing(6)
-        
-        self.combo_texture_preset = NonScrollComboBox()
-        self.combo_texture_preset.addItems([
-            "Crosshatch Grid",
-            "Dot Stipple",
-            "Holographic Lines",
-            "Diamond Foil Grid",
-            "Custom File..."
-        ])
-        self.combo_texture_preset.currentTextChanged.connect(self.on_texture_preset_changed)
-        tex_layout.addWidget(self.combo_texture_preset)
-
-        tex_sub_layout = QHBoxLayout()
-        self.lbl_texture_path = QLabel("Crosshatch Grid")
+        self.lbl_texture_path = QLabel("No texture selected")
         self.lbl_texture_path.setStyleSheet("font-size: 11px; color: #94a3b8;")
         btn_browse_tex = QPushButton("Browse...")
         btn_browse_tex.clicked.connect(self.on_browse_texture)
-        tex_sub_layout.addWidget(self.lbl_texture_path)
-        tex_sub_layout.addWidget(btn_browse_tex)
-        tex_layout.addLayout(tex_sub_layout)
-
+        tex_layout.addWidget(self.lbl_texture_path)
+        tex_layout.addWidget(btn_browse_tex)
         dither_layout.addWidget(self.texture_container)
         self.texture_container.hide()
         
@@ -295,18 +280,6 @@ class MappingPanel(QWidget):
         self.cb_preserve_opaque.setVisible(mode in ("Ordered Bayer", "Floyd–Steinberg", "Atkinson"))
         self.dither_mode_changed.emit(mode)
         
-    def on_texture_preset_changed(self, preset_name: str):
-        if preset_name == "Custom File...":
-            self.on_browse_texture()
-        else:
-            from core import basic_textures
-            presets = basic_textures.build_basic_texture_files(600)
-            if preset_name in presets:
-                path = presets[preset_name]
-                self.lbl_texture_path.setText(preset_name)
-                self.lbl_texture_path.setToolTip(path)
-                self.dither_texture_changed.emit(path)
-
     def on_browse_texture(self):
         filepath, _ = QFileDialog.getOpenFileName(
             self,
