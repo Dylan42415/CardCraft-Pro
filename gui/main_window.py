@@ -10,10 +10,12 @@ from core import layout_engine
 from core import project_manager
 from core import tiff_parser
 from core import export_engine
+from PySide6.QtCore import Qt, QRectF, QPointF, QThreadPool
 from gui.canvas_view import InteractiveCanvasView
 from gui.mapping_panel import MappingPanel
 from gui.layout_dialog import LayoutDialog
 from gui.export_worker import ExportSheetWorker, ExportCardsWorker
+from gui.card_loader_worker import CardPreviewTask
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -44,6 +46,8 @@ class MainWindow(QMainWindow):
         self.ppi = 150 # Preview resolution (fast and crisp enough)
         self._preview_cache = {}
         self._reg_pixmap_cache = None
+        self.thread_pool = QThreadPool.globalInstance()
+        self._pending_tasks = set()
 
         # Setup main layout
         self.central_widget = QWidget(self)
@@ -1062,6 +1066,21 @@ class MainWindow(QMainWindow):
         rotation_val = p_slot.rotation
         return (p_slot.filepath, view_mode, mappings_tuple, disabled_tuple, dither_tuple, rotation_val)
 
+    def _on_card_preview_finished(self, s_idx: int, cache_key: tuple, card_preview):
+        try:
+            if s_idx in self._pending_tasks:
+                self._pending_tasks.remove(s_idx)
+            
+            if card_preview is not None:
+                card_data = card_preview.convert("RGBA").tobytes("raw", "RGBA")
+                c_h, c_w = card_preview.height, card_preview.width
+                q_c_img = QImage(card_data, c_w, c_h, QImage.Format.Format_RGBA8888)
+                pixmap_card = QPixmap.fromImage(q_c_img)
+                self._preview_cache[s_idx] = (cache_key, pixmap_card)
+                self.render_canvas()
+        except Exception as e:
+            print(f"Async preview update failed for slot {s_idx}: {e}")
+
     # High-performance Canvas Rendering
     def render_canvas(self):
         # 1. Compute pixel sizes based on PPI
@@ -1130,36 +1149,32 @@ class MainWindow(QMainWindow):
                     if cached_entry and cached_entry[0] == cache_key:
                         pixmap_card = cached_entry[1]
                     else:
-                        channels = tiff_parser.parse_tiff_channels(p_slot.filepath)
-                        # Set background depending on view mode (combined=white, single-mask=black for contrast)
-                        bg = (255, 255, 255) if self.view_mode in ("Combined", "Artwork Only") else (0, 0, 0)
-                        
-                        card_preview = tiff_parser.render_preview_rgb(
-                            p_slot.filepath, channels, p_slot.mappings, visible_layers, bg,
-                            dither_settings=p_slot.dither_settings
-                        )
-                        
-                        # Convert to QPixmap
-                        card_data = card_preview.convert("RGBA").tobytes("raw", "RGBA")
-                        c_h, c_w = card_preview.height, card_preview.width
-                        q_c_img = QImage(card_data, c_w, c_h, QImage.Format.Format_RGBA8888).copy()
-                        pixmap_card = QPixmap.fromImage(q_c_img)
-                        self._preview_cache[s_idx] = (cache_key, pixmap_card)
+                        pixmap_card = cached_entry[1] if cached_entry else None
+                        if s_idx not in self._pending_tasks:
+                            self._pending_tasks.add(s_idx)
+                            bg = (255, 255, 255) if self.view_mode in ("Combined", "Artwork Only") else (0, 0, 0)
+                            task = CardPreviewTask(
+                                s_idx, p_slot.filepath, p_slot.mappings, visible_layers,
+                                self.view_mode, bg, p_slot.dither_settings, cache_key
+                            )
+                            task.signals.finished.connect(self._on_card_preview_finished)
+                            self.thread_pool.start(task)
 
-                    # Scale the pixmap directly to the slot dimensions
-                    scaled_pixmap = pixmap_card.scaled(int(sw), int(sh), Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                    
-                    card_item = QGraphicsPixmapItem(scaled_pixmap)
-                    card_item.setTransformationMode(Qt.TransformationMode.SmoothTransformation)
-                    
-                    # Set rotation pivot center to the center of the slot
-                    card_item.setTransformOriginPoint(sw / 2, sh / 2)
-                    card_item.setRotation(p_slot.rotation)
-                    
-                    # Position slot
-                    card_item.setPos(sx, sy)
-                    card_item.setData(0, s_idx) # Store slot index
-                    scene.addItem(card_item)
+                    if pixmap_card:
+                        # Scale the pixmap directly to the slot dimensions
+                        scaled_pixmap = pixmap_card.scaled(int(sw), int(sh), Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                        
+                        card_item = QGraphicsPixmapItem(scaled_pixmap)
+                        card_item.setTransformationMode(Qt.TransformationMode.SmoothTransformation)
+                        
+                        # Set rotation pivot center to the center of the slot
+                        card_item.setTransformOriginPoint(sw / 2, sh / 2)
+                        card_item.setRotation(p_slot.rotation)
+                        
+                        # Position slot
+                        card_item.setPos(sx, sy)
+                        card_item.setData(0, s_idx) # Store slot index
+                        scene.addItem(card_item)
                 except Exception as e:
                     print(f"Error rendering card slot {s_idx}: {e}")
 
