@@ -296,12 +296,12 @@
     "project_path": "C:/Users/Dfault/Downloads/testprint.optcgproject",
     "active_slot_index": 1,
     "view_mode": "Emboss Only",
-    "zoom_level": 1.74900625,
-    "center_x": 551.170128751684,
-    "center_y": 373.3548693722507,
+    "zoom_level": 0.28426241204014585,
+    "center_x": 622.6641036698256,
+    "center_y": 879.4690729799797,
     "splitter_sizes": [
         338,
-        1097
+        937
     ],
-    "window_geometry": "01d9d0cb0003000000000000fffffffa0000059f00000354000000060000001c000004f80000029e000000000200000005a000000000000000170000059f00000354"
+    "window_geometry": "01d9d0cb0003000000000000fffffffa000004ff0000029f000000060000001c000004f80000029e000000000200000005000000000000000016000004ff0000029f"
 }
