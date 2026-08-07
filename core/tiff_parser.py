@@ -441,12 +441,22 @@ def render_preview_rgb(
     # Base alpha (defaults to fully opaque 255)
     a_arr = load_channel_array(filepath, art_channels['A']) if 'A' in art_channels else np.full((h, w), 255, dtype=np.uint8)
 
+    # 3mm corner radius mask for card previews
+    ppi_val = get_tiff_ppi(filepath)
+    r_px = max(1, round((3.0 / 25.4) * ppi_val))
+    c_mask_img = Image.new("L", (w, h), 0)
+    draw = ImageDraw.Draw(c_mask_img)
+    draw.rounded_rectangle([0, 0, w - 1, h - 1], radius=r_px, fill=255)
+    outside_corners = (np.array(c_mask_img) == 0)
+
+    r_arr[outside_corners] = background_color[0]
+    g_arr[outside_corners] = background_color[1]
+    b_arr[outside_corners] = background_color[2]
+    a_arr[outside_corners] = 0
+
     base_img = Image.fromarray(np.stack([r_arr, g_arr, b_arr, a_arr], axis=-1), mode="RGBA")
 
     # 3. Apply overlays (White Ink, Gloss, Emboss) as semi-transparent color washes
-    # White Ink: Rendered as a light blue-tinted overlay (since white on white is invisible)
-    # Gloss: Rendered as a glossy cyan overlay
-    # Emboss: Rendered as a dark gray shadow/embossed mask
     preview_composite = Image.new("RGBA", (w, h), background_color + (255,))
     preview_composite.paste(base_img, (0, 0), base_img)
 
@@ -454,6 +464,7 @@ def render_preview_rgb(
 
     if white_channel:
         w_arr = load_channel_array(filepath, white_channel)
+        w_arr[outside_corners] = 255
         if dither_settings:
             dither_mode = dither_settings.get("dither_mode")
             if dither_mode is None:
@@ -491,6 +502,7 @@ def render_preview_rgb(
 
     if gloss_channel:
         g_arr = load_channel_array(filepath, gloss_channel)
+        g_arr[outside_corners] = 255
         # Create vibrant yellow/gold tint for gloss/varnish: RGB=(255, 235, 150)
         g_tint = np.zeros((h, w, 4), dtype=np.uint8)
         g_tint[..., 0] = 255
@@ -502,6 +514,7 @@ def render_preview_rgb(
 
     if emboss_channel:
         e_arr = load_channel_array(filepath, emboss_channel)
+        e_arr[outside_corners] = 255
         # Create emboss/height mask (magenta/purple tint): RGB=(220, 100, 220)
         e_tint = np.zeros((h, w, 4), dtype=np.uint8)
         e_tint[..., 0] = 220

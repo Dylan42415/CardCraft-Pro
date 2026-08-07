@@ -97,6 +97,14 @@ def compile_sheet_pass(
                 if slot_state.rotation != 0:
                     card_img = card_img.rotate(360 - slot_state.rotation, expand=False, fillcolor=(255, 255, 255, 0))
 
+                card_arr = np.array(card_img)
+                radius_mm = project.layout.card_size.radius_mm
+                corner_mask = create_card_corner_mask(w_card, h_card, radius_mm, ppi)
+                outside_corners = (corner_mask == 0)
+                card_arr[outside_corners, 0:3] = 255
+                card_arr[outside_corners, 3] = 0
+                card_img = Image.fromarray(card_arr, mode="RGBA")
+
                 # Paste into sheet canvas using PIL alpha pasting
                 sheet_img = Image.fromarray(sheet_arr, mode="RGBA")
                 sheet_img.paste(card_img, (sx, sy), card_img)
@@ -235,6 +243,11 @@ def compile_sheet_pass(
                             rot_report = validate_binary_channel(spot_arr, target_pass, f"Slot {s_idx} - Rotated")
                             validation_reports.append(rot_report)
                         
+                    radius_mm = project.layout.card_size.radius_mm
+                    corner_mask = create_card_corner_mask(w_card, h_card, radius_mm, ppi)
+                    outside_corners = (corner_mask == 0)
+                    spot_arr[outside_corners] = 255
+
                     sheet_arr[sy:sy+h_card, sx:sx+w_card] = spot_arr
         except Exception as e:
             print(f"Error compiling slot {s_idx} for pass '{target_pass}': {e}")
