@@ -13,6 +13,7 @@ from core import export_engine
 from gui.canvas_view import InteractiveCanvasView
 from gui.mapping_panel import MappingPanel
 from gui.layout_dialog import LayoutDialog
+from gui.export_worker import ExportSheetWorker, ExportCardsWorker
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -1388,13 +1389,15 @@ class MainWindow(QMainWindow):
     def export_individual_cards_dialog(self):
         if not self.validate_project_before_export():
             return
-        output_dir = QFileDialog.getExistingDirectory(self, "Select Directory to Save 9 Individual Card TIFFs")
+        output_dir = QFileDialog.getExistingDirectory(self, "Select Directory to Save Individual Card TIFFs")
         if output_dir:
-            self.statusBar().showMessage("Rendering individual 600 PPI card TIFF files...")
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
-            try:
-                paths, validation_reports = export_engine.export_individual_cards(self.project, output_dir, 600)
-                QApplication.restoreOverrideCursor()
+            self.statusBar().showMessage("Rendering individual 600 PPI card TIFF files in background...")
+            
+            self.card_export_worker = ExportCardsWorker(self.project, output_dir, parent=self)
+            self.card_export_worker.progress_updated.connect(
+                lambda current, total, msg: self.statusBar().showMessage(f"[{current}/{total}] {msg}")
+            )
+            def on_finished(paths):
                 if paths:
                     QMessageBox.information(
                         self, 
@@ -1404,10 +1407,13 @@ class MainWindow(QMainWindow):
                     self.statusBar().showMessage(f"Exported {len(paths)} card TIFF files successfully.", 4000)
                 else:
                     QMessageBox.warning(self, "No Cards Exported", "No card files were assigned to slots.")
-            except Exception as e:
-                QApplication.restoreOverrideCursor()
-                QMessageBox.critical(self, "Export Failed", f"Failed to export individual cards:\n{e}")
+            def on_failed(err_msg):
+                QMessageBox.critical(self, "Export Failed", f"Failed to export individual cards:\n{err_msg}")
                 self.statusBar().showMessage("Individual cards export failed.", 4000)
+
+            self.card_export_worker.export_finished.connect(on_finished)
+            self.card_export_worker.export_failed.connect(on_failed)
+            self.card_export_worker.start()
 
     def batch_load_cards_files(self):
         filepaths, _ = QFileDialog.getOpenFileNames(
