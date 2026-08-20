@@ -736,6 +736,8 @@ class MainWindow(QMainWindow):
         """Automatically detects standard RGB color and mask channels and maps them to UV passes."""
         mappings = {}
         
+        is_psd_structured = any(ch.page_index == -1 for ch in channels)
+        
         # Sort channels so that global spot channels (page_index == -1) are processed first
         sorted_channels = sorted(channels, key=lambda c: 0 if c.page_index == -1 else 1)
         
@@ -750,6 +752,10 @@ class MainWindow(QMainWindow):
                 mappings[ch.name] = "Base Artwork"
                 continue
                 
+            # Filter spot channels: if PSD-structured, ONLY map document-level spot channels (page_index == -1)
+            if is_psd_structured and ch.page_index != -1:
+                continue
+
             # Map spot channels
             target_pass = None
             if name == "1" or "white" in name or "spot1" in name or "spot_1" in name:

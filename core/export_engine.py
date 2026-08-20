@@ -693,7 +693,16 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
         p2_extra_names = []
         all_extra_names_spot = []
 
-        for ch in channels:
+        is_psd_struct = any(ch.page_index == -1 for ch in channels)
+        if is_psd_struct:
+            spot_source_channels = [ch for ch in channels if ch.page_index == -1]
+        else:
+            spot_source_channels = [
+                ch for ch in channels 
+                if (ch.page_index > 0) or (ch.channel_in_page >= 4) or not any(k in ch.name.lower() for k in ("red", "green", "blue", "cyan", "magenta", "yellow", "alpha", "transparency"))
+            ]
+
+        for ch in spot_source_channels:
             name_lower = ch.name.lower()
             if any(x in name_lower for x in ("red", "green", "blue", "cyan", "magenta", "yellow", "alpha", "transparency")) or ch.name == "Base Artwork (RGB)":
                 continue
