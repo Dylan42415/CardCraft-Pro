@@ -759,6 +759,25 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
                 ch_display_name = "3"
             elif mapped_pass in ("Emboss 2", "Emboss2") or ch.name in ("4", "emboss 2", "emboss2"):
                 ch_display_name = "4"
+            elif "emboss" in mapped_pass.lower() or "emboss" in ch.name.lower():
+                val = 4
+                while str(val) in extra_names:
+                    val += 1
+                ch_display_name = str(val)
+
+            # Deduplicate channel names so Photoshop never displays repeated names (e.g. 4, 4, 4)
+            if ch_display_name in extra_names:
+                if ch_display_name.isdigit():
+                    val = int(ch_display_name) + 1
+                    while str(val) in extra_names:
+                        val += 1
+                    ch_display_name = str(val)
+                else:
+                    count = 2
+                    while f"{ch_display_name} {count}" in extra_names:
+                        count += 1
+                    ch_display_name = f"{ch_display_name} {count}"
+
             extra_names.append(ch_display_name)
 
         if not channels_list:
