@@ -758,23 +758,19 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
             rep = dithering.validate_binary_channel(repaired_arr, mapped_pass, f"Slot {slot.slot_index + 1} - {ch.name}")
             all_reports.append(rep)
 
-            # Spot channel naming & pass classification
+            # Spot channel naming & pass classification (Pass 2 strictly requires channel 4 / Emboss 2)
             ch_display_name = ch.name
             is_pass_2 = False
 
-            if mapped_pass == "White Ink" or ch.name in ("1", "white ink"):
+            if mapped_pass == "White Ink" or ch.name in ("1", "white ink", "spot1", "spot_1"):
                 ch_display_name = "1"
-            elif mapped_pass == "Emboss" or ch.name in ("3", "emboss", "emboss 1"):
-                ch_display_name = "3"
-            elif mapped_pass in ("Emboss 2", "Emboss2") or ch.name in ("4", "emboss 2", "emboss2"):
+            elif mapped_pass in ("Emboss 2", "Emboss2", "4") or ch.name in ("4", "emboss 2", "emboss2", "spot4", "spot_4"):
                 ch_display_name = "4"
                 is_pass_2 = True
-            elif "emboss" in mapped_pass.lower() or "emboss" in ch.name.lower():
-                is_pass_2 = True
-                val = 4
-                while str(val) in (p1_extra_names + p2_extra_names):
-                    val += 1
-                ch_display_name = str(val)
+            elif mapped_pass in ("Emboss", "Emboss 1") or ch.name in ("3", "emboss", "emboss 1", "spot2", "spot_2") or "emboss" in ch.name.lower():
+                ch_display_name = "3"
+            elif "gloss" in mapped_pass.lower() or "varnish" in mapped_pass.lower() or "gloss" in ch.name.lower():
+                ch_display_name = "Gloss"
 
             if is_pass_2:
                 if ch_display_name in p2_extra_names:
