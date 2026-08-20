@@ -414,9 +414,9 @@ def render_preview_rgb(
     # 1. Group active mapped channels
     # Find channels mapped to "Base Artwork" (typically Red, Green, Blue, Alpha)
     art_channels = {}
-    white_channel = None
-    gloss_channel = None
-    emboss_channel = None
+    white_channels = []
+    gloss_channels = []
+    emboss_channels = []
 
     rgb_target = mappings.get("Base Artwork (RGB)", "Base Artwork")
 
@@ -428,6 +428,13 @@ def render_preview_rgb(
             target = rgb_target
         else:
             target = mappings.get(ch.name)
+            if not target:
+                if ch.name == "1" or "white" in name_lower:
+                    target = "White Ink"
+                elif ch.name in ("3", "4") or "emboss" in name_lower:
+                    target = "Emboss"
+                elif "gloss" in name_lower or "varnish" in name_lower:
+                    target = "Gloss"
             
         if not target or target not in visible_layers:
             continue
@@ -442,12 +449,12 @@ def render_preview_rgb(
                 art_channels['B'] = ch
             elif "alpha" in name_lower or "transparency" in name_lower:
                 art_channels['A'] = ch
-        elif target == "White Ink":
-            white_channel = ch
-        elif target == "Gloss":
-            gloss_channel = ch
-        elif target == "Emboss":
-            emboss_channel = ch
+        elif target in ("White Ink", "1"):
+            white_channels.append(ch)
+        elif target in ("Gloss", "varnish"):
+            gloss_channels.append(ch)
+        elif target in ("Emboss", "Emboss 1", "Emboss 2", "3", "4") or "emboss" in target.lower():
+            emboss_channels.append(ch)
 
     # Get width/height of the card (use first channel shape)
     if not channels:
@@ -466,16 +473,14 @@ def render_preview_rgb(
     base_img = Image.fromarray(np.stack([r_arr, g_arr, b_arr, a_arr], axis=-1), mode="RGBA")
 
     # 3. Apply overlays (White Ink, Gloss, Emboss) as semi-transparent color washes
-    # White Ink: Rendered as a light blue-tinted overlay (since white on white is invisible)
-    # Gloss: Rendered as a glossy cyan overlay
-    # Emboss: Rendered as a dark gray shadow/embossed mask
     preview_composite = Image.new("RGBA", (w, h), background_color + (255,))
-    preview_composite.paste(base_img, (0, 0), base_img)
+    if "Base Artwork" in visible_layers:
+        preview_composite.paste(base_img, (0, 0), base_img)
 
     overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
 
-    if white_channel:
-        w_arr = load_channel_array(filepath, white_channel)
+    for white_ch in white_channels:
+        w_arr = load_channel_array(filepath, white_ch)
         if dither_settings:
             dither_mode = dither_settings.get("dither_mode")
             if dither_mode is None:
@@ -499,10 +504,11 @@ def render_preview_rgb(
             from core import dithering
             ppi_val = get_tiff_ppi(filepath)
             w_arr = dithering.process_white_channel(w_arr, dither_mode, ppi_val, settings)
-            if dither_settings.get("dither_duplicate_emboss") == "true" and emboss_channel:
-                e_arr = load_channel_array(filepath, emboss_channel)
-                w_arr = dithering.compose_white_channel(w_arr, e_arr, dither_settings)
-        # Create light cyan-blue tint for white ink: RGB=(200, 220, 255) with variable alpha
+            if dither_settings.get("dither_duplicate_emboss") == "true":
+                for emb_ch in emboss_channels:
+                    e_arr = load_channel_array(filepath, emb_ch)
+                    w_arr = dithering.compose_white_channel(w_arr, e_arr, dither_settings)
+        # Create light cyan-blue tint for white ink: RGB=(200, 220, 255)
         w_tint = np.zeros((h, w, 4), dtype=np.uint8)
         w_tint[..., 0] = 200 # R
         w_tint[..., 1] = 220 # G
@@ -511,8 +517,8 @@ def render_preview_rgb(
         w_overlay = Image.fromarray(w_tint, mode="RGBA")
         overlay = Image.alpha_composite(overlay, w_overlay)
 
-    if gloss_channel:
-        g_arr = load_channel_array(filepath, gloss_channel)
+    for gloss_ch in gloss_channels:
+        g_arr = load_channel_array(filepath, gloss_ch)
         # Create vibrant yellow/gold tint for gloss/varnish: RGB=(255, 235, 150)
         g_tint = np.zeros((h, w, 4), dtype=np.uint8)
         g_tint[..., 0] = 255
@@ -522,14 +528,16 @@ def render_preview_rgb(
         g_overlay = Image.fromarray(g_tint, mode="RGBA")
         overlay = Image.alpha_composite(overlay, g_overlay)
 
-    if emboss_channel:
-        e_arr = load_channel_array(filepath, emboss_channel)
+    for emb_ch in emboss_channels:
+        e_arr = load_channel_array(filepath, emb_ch)
         # Create emboss/height mask (magenta/purple tint): RGB=(220, 100, 220)
         e_tint = np.zeros((h, w, 4), dtype=np.uint8)
         e_tint[..., 0] = 220
         e_tint[..., 1] = 100
         e_tint[..., 2] = 220
-        e_tint[..., 3] = (e_arr * 0.4).astype(np.uint8) # 40% opacity max
+        # If binary mask, ink is 0/active, map active pixels to opacity
+        ink_opacity = np.where(e_arr < 255, 120, 0).astype(np.uint8) if np.max(e_arr) == 255 else (e_arr * 0.4).astype(np.uint8)
+        e_tint[..., 3] = ink_opacity
         e_overlay = Image.fromarray(e_tint, mode="RGBA")
         overlay = Image.alpha_composite(overlay, e_overlay)
 

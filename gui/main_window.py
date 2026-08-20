@@ -1097,15 +1097,15 @@ class MainWindow(QMainWindow):
         # Visibility: Base Artwork, White Ink, Gloss, Emboss
         visible_layers = []
         if self.view_mode == "Combined":
-            visible_layers = ["Base Artwork", "White Ink", "Gloss", "Emboss"]
+            visible_layers = ["Base Artwork", "White Ink", "Gloss", "Emboss", "Emboss 1", "Emboss 2", "1", "3", "4"]
         elif self.view_mode == "Artwork Only":
             visible_layers = ["Base Artwork"]
         elif self.view_mode == "White Ink Only":
-            visible_layers = ["White Ink"]
+            visible_layers = ["White Ink", "1"]
         elif self.view_mode == "Gloss Only":
             visible_layers = ["Gloss"]
         elif self.view_mode == "Emboss Only":
-            visible_layers = ["Emboss"]
+            visible_layers = ["Emboss", "Emboss 1", "Emboss 2", "3", "4"]
 
         # 5. Render card slots and their content
         for slot in grid["slots"]:
