@@ -830,17 +830,21 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
             )
             exported_paths.append(file_path)
 
-        # 1. Export 1st Pass file (channels 1 & 3)
-        pass1_path = os.path.join(output_dir, f"card_slot_{slot.slot_index + 1}_{base_name}_1stpass.tiff")
-        save_card_tiff(pass1_path, p1_spot_channels, p1_extra_names)
-
-        # 2. Export 2nd Pass file if channel 4 / Pass 2 exists
+        # 1. Single Pass Card (Channels 1 & 3 only): Output 1 file in output_dir
+        # 2. Two-Pass Card (Channel 4 present): Create subfolder and output 1stpass & 2ndpass files inside
         if p2_spot_channels:
-            pass2_path = os.path.join(output_dir, f"card_slot_{slot.slot_index + 1}_{base_name}_2ndpass.tiff")
-            save_card_tiff(pass2_path, p2_spot_channels, p2_extra_names)
+            folder_name = f"card_slot_{slot.slot_index + 1}_{base_name}"
+            card_subfolder = os.path.join(output_dir, folder_name)
+            os.makedirs(card_subfolder, exist_ok=True)
 
-        # 3. Export combined multi-channel file
-        save_card_tiff(out_path, all_spot_channels, all_extra_names_spot)
+            pass1_path = os.path.join(card_subfolder, f"card_slot_{slot.slot_index + 1}_{base_name}_1stpass.tiff")
+            save_card_tiff(pass1_path, p1_spot_channels, p1_extra_names)
+
+            pass2_path = os.path.join(card_subfolder, f"card_slot_{slot.slot_index + 1}_{base_name}_2ndpass.tiff")
+            save_card_tiff(pass2_path, p2_spot_channels, p2_extra_names)
+        else:
+            single_path = os.path.join(output_dir, f"card_slot_{slot.slot_index + 1}_{base_name}_600ppi.tiff")
+            save_card_tiff(single_path, p1_spot_channels, p1_extra_names)
 
     return exported_paths, all_reports
 
