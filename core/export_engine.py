@@ -174,31 +174,31 @@ def compile_sheet_pass(
                             gen_report = validate_binary_channel(spot_arr, target_pass, f"Slot {s_idx} - Mask Generated")
                             validation_reports.append(gen_report)
                         
-                        # Composition stage: Duplicate Emboss Into White
+                        # Composition stage: Duplicate ALL Emboss channels Into White
                         if dither_settings.get("dither_duplicate_emboss") == "true":
-                            emboss_ch = None
                             for ch in channels:
                                 if slot_state.disabled_channels and ch.name in slot_state.disabled_channels:
                                     continue
-                                mapped = slot_state.mappings.get(ch.name)
-                                if mapped == "Emboss":
-                                    emboss_ch = ch
-                                    break
-                            if emboss_ch:
-                                raw_emboss = tiff_parser.load_channel_array(slot_state.filepath, emboss_ch)
-                                emboss_img = Image.fromarray(raw_emboss, mode="L")
-                                # Use NEAREST resampling to keep emboss mask binary
-                                emboss_img_resized = emboss_img.resize((w_card, h_card), Image.Resampling.NEAREST)
-                                emboss_arr = np.array(emboss_img_resized)
-                                
-                                # Shape validation check
-                                if emboss_arr.shape != (h_card, w_card):
-                                    raise ValueError(
-                                        f"Spot channel shape mismatch in stage 'Emboss Resize' for pass 'Emboss': "
-                                        f"expected {(h_card, w_card)}, got {emboss_arr.shape}"
-                                    )
+                                mapped = slot_state.mappings.get(ch.name, ch.name)
+                                if (
+                                    mapped in ("Emboss", "Emboss 1", "Emboss 2", "3", "4")
+                                    or ch.name in ("3", "4")
+                                    or "emboss" in ch.name.lower()
+                                ):
+                                    raw_emboss = tiff_parser.load_channel_array(slot_state.filepath, ch)
+                                    emboss_img = Image.fromarray(raw_emboss, mode="L")
+                                    # Use NEAREST resampling to keep emboss mask binary
+                                    emboss_img_resized = emboss_img.resize((w_card, h_card), Image.Resampling.NEAREST)
+                                    emboss_arr = np.array(emboss_img_resized)
                                     
-                                spot_arr = dithering.compose_white_channel(spot_arr, emboss_arr, dither_settings)
+                                    # Shape validation check
+                                    if emboss_arr.shape != (h_card, w_card):
+                                        raise ValueError(
+                                            f"Spot channel shape mismatch in stage 'Emboss Resize' for pass '{mapped}': "
+                                            f"expected {(h_card, w_card)}, got {emboss_arr.shape}"
+                                        )
+                                        
+                                    spot_arr = dithering.compose_white_channel(spot_arr, emboss_arr, dither_settings)
                                 
                                 # Shape validation check
                                 if spot_arr.shape != (h_card, w_card):
@@ -684,66 +684,82 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
             channels_list.append(card_arr[..., 2])
             channels_list.append(card_arr[..., 3])
 
-        # Render Spot Passes
-        for pass_name in active_spot_passes:
-            target_ch = None
-            for ch in channels:
-                if slot.disabled_channels and ch.name in slot.disabled_channels:
-                    continue
-                if slot.mappings.get(ch.name) == pass_name:
-                    target_ch = ch
-                    break
+        # Render Spot Passes (Preserve White Ink 1, Emboss 3, Emboss 4, etc.)
+        for ch in channels:
+            name_lower = ch.name.lower()
+            if any(x in name_lower for x in ("red", "green", "blue", "cyan", "magenta", "yellow", "alpha", "transparency")) or ch.name == "Base Artwork (RGB)":
+                continue
+            if slot.disabled_channels and ch.name in slot.disabled_channels:
+                continue
 
-            if target_ch:
-                raw_spot = tiff_parser.load_channel_array(slot.filepath, target_ch)
-                spot_img = Image.fromarray(raw_spot, mode="L")
-                spot_img_resized = spot_img.resize((w_px, h_px), Image.Resampling.NEAREST)
-                spot_arr = np.array(spot_img_resized)
+            mapped_pass = slot.mappings.get(ch.name)
+            if not mapped_pass:
+                if ch.name == "1" or "white" in name_lower or "spot1" in name_lower:
+                    mapped_pass = "White Ink"
+                elif ch.name == "3" or "emboss 1" in name_lower or ch.name.lower() == "emboss":
+                    mapped_pass = "Emboss"
+                elif ch.name == "4" or "emboss 2" in name_lower or "emboss2" in name_lower:
+                    mapped_pass = "Emboss 2"
+                elif "gloss" in name_lower or "varnish" in name_lower:
+                    mapped_pass = "Gloss"
+                else:
+                    mapped_pass = ch.name
 
-                from core import dithering
+            if mapped_pass in project.disabled_passes:
+                continue
 
-                # Dithering ONLY applies to White Ink (never to Emboss or Gloss)
-                if pass_name == "White Ink":
-                    dither_mode = slot.dither_settings.get("dither_mode", "None")
-                    spot_arr = dithering.process_white_channel(spot_arr, dither_mode, ppi, slot.dither_settings)
+            raw_spot = tiff_parser.load_channel_array(slot.filepath, ch)
+            spot_img = Image.fromarray(raw_spot, mode="L")
+            spot_img_resized = spot_img.resize((w_px, h_px), Image.Resampling.NEAREST)
+            spot_arr = np.array(spot_img_resized)
 
-                    # Duplicate Emboss Into White Ink channel
-                    if slot.dither_settings.get("dither_duplicate_emboss") == "true":
-                        emboss_ch = None
-                        for ch in channels:
-                            if slot.disabled_channels and ch.name in slot.disabled_channels:
-                                continue
-                            if slot.mappings.get(ch.name) == "Emboss":
-                                emboss_ch = ch
-                                break
-                        if emboss_ch:
-                            raw_emboss = tiff_parser.load_channel_array(slot.filepath, emboss_ch)
-                            emboss_img = Image.fromarray(raw_emboss, mode="L").resize((w_px, h_px), Image.Resampling.NEAREST)
-                            emboss_arr = np.array(emboss_img)
-                            spot_arr = dithering.compose_white_channel(spot_arr, emboss_arr, slot.dither_settings)
+            from core import dithering
 
-                # Rotate spot channel if slot is rotated
-                if slot.rotation != 0:
-                    spot_img_rot = Image.fromarray(spot_arr, mode="L").rotate(
-                        360 - slot.rotation, expand=False, fillcolor=255, resample=Image.Resampling.NEAREST
-                    )
-                    spot_arr = np.array(spot_img_rot)
+            # Dithering ONLY applies to White Ink (never to Emboss channels 3 or 4)
+            if mapped_pass == "White Ink":
+                dither_mode = slot.dither_settings.get("dither_mode", "None")
+                spot_arr = dithering.process_white_channel(spot_arr, dither_mode, ppi, slot.dither_settings)
 
-                # Mask 4 corners outside rounded rectangle to pure white (255 = 0% ink / no spot ink)
-                spot_arr[outside_corners] = 255
+                # Duplicate ALL Emboss channels (3 and 4) into White Ink channel
+                if slot.dither_settings.get("dither_duplicate_emboss") == "true":
+                    for emb_ch in channels:
+                        if slot.disabled_channels and emb_ch.name in slot.disabled_channels:
+                            continue
+                        emb_target = slot.mappings.get(emb_ch.name, emb_ch.name)
+                        if (
+                            emb_target in ("Emboss", "Emboss 1", "Emboss 2", "3", "4")
+                            or emb_ch.name in ("3", "4")
+                            or "emboss" in emb_ch.name.lower()
+                        ):
+                            raw_emb = tiff_parser.load_channel_array(slot.filepath, emb_ch)
+                            emb_img = Image.fromarray(raw_emb, mode="L").resize((w_px, h_px), Image.Resampling.NEAREST)
+                            emb_arr = np.array(emb_img)
+                            spot_arr = dithering.compose_white_channel(spot_arr, emb_arr, slot.dither_settings)
 
-                repaired_arr = dithering.binary_enforce_channel(spot_arr)
-                rep = dithering.validate_binary_channel(repaired_arr, pass_name, f"Slot {slot.slot_index + 1} - Final")
-                all_reports.append(rep)
-                channels_list.append(repaired_arr)
-                
-                # Spot channel naming
-                ch_display_name = pass_name
-                if pass_name == "White Ink":
-                    ch_display_name = "1"
-                elif pass_name == "Emboss":
-                    ch_display_name = "3"
-                extra_names.append(ch_display_name)
+            # Rotate spot channel if slot is rotated
+            if slot.rotation != 0:
+                spot_img_rot = Image.fromarray(spot_arr, mode="L").rotate(
+                    360 - slot.rotation, expand=False, fillcolor=255, resample=Image.Resampling.NEAREST
+                )
+                spot_arr = np.array(spot_img_rot)
+
+            # Mask 4 corners outside rounded rectangle to pure white (255 = 0% ink / no spot ink)
+            spot_arr[outside_corners] = 255
+
+            repaired_arr = dithering.binary_enforce_channel(spot_arr)
+            rep = dithering.validate_binary_channel(repaired_arr, mapped_pass, f"Slot {slot.slot_index + 1} - {ch.name}")
+            all_reports.append(rep)
+            channels_list.append(repaired_arr)
+            
+            # Spot channel naming for Photoshop Resource Block
+            ch_display_name = ch.name
+            if mapped_pass == "White Ink" or ch.name in ("1", "white ink"):
+                ch_display_name = "1"
+            elif mapped_pass == "Emboss" or ch.name in ("3", "emboss", "emboss 1"):
+                ch_display_name = "3"
+            elif mapped_pass in ("Emboss 2", "Emboss2") or ch.name in ("4", "emboss 2", "emboss2"):
+                ch_display_name = "4"
+            extra_names.append(ch_display_name)
 
         if not channels_list:
             continue

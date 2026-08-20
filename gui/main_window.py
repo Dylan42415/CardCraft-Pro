@@ -754,16 +754,23 @@ class MainWindow(QMainWindow):
             target_pass = None
             if name == "1" or "white" in name or "spot1" in name or "spot_1" in name:
                 target_pass = "White Ink"
-            elif name == "3" or "emboss" in name or "height" in name or "bump" in name or "spot2" in name or "spot_2" in name:
+            elif name == "3" or "emboss 1" in name or "spot2" in name or "spot_2" in name:
                 target_pass = "Emboss"
+            elif name == "4" or "emboss 2" in name or "emboss2" in name or "spot4" in name or "spot_4" in name:
+                target_pass = "Emboss 2"
+            elif "emboss" in name or "height" in name or "bump" in name:
+                if "Emboss" not in assigned_passes:
+                    target_pass = "Emboss"
+                else:
+                    target_pass = "Emboss 2"
             elif "gloss" in name or "varnish" in name or "spot3" in name or "spot_3" in name:
                 target_pass = "Gloss"
+            else:
+                target_pass = ch.name
                 
             if target_pass:
-                # Only map if this print pass has not been assigned to a higher-precedence channel yet
-                if target_pass not in assigned_passes:
-                    mappings[ch.name] = target_pass
-                    assigned_passes.add(target_pass)
+                mappings[ch.name] = target_pass
+                assigned_passes.add(target_pass)
                     
         # If still unmapped (like a simple 3-channel RGB image with default page-channel names),
         # map first 3 channels to Base Artwork
