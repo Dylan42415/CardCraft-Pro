@@ -393,6 +393,56 @@ def load_channel_array(filepath: str, channel_info: TIFFChannelInfo) -> np.ndarr
             else:
                 return np.zeros_like(data, dtype=np.uint8)
 
+def select_best_base_artwork(filepath: str, channels: List[TIFFChannelInfo]) -> Dict[str, TIFFChannelInfo]:
+    """
+    Evaluates candidate RGB/RGBA layer groups in the file and selects the solid,
+    most full-color raw card artwork image (highest alpha solidity & RGB color variance).
+    Prevents picking monochrome layer masks or partial transparency layers.
+    """
+    layer_groups = {}
+    for ch in channels:
+        name_lower = ch.name.lower()
+        if any(k in name_lower for k in ('red', 'green', 'blue', 'alpha', 'transparency')) or (ch.page_index == 0 and ch.channel_in_page in (0, 1, 2, 3)):
+            prefix = ch.name.split(' - ')[0] if ' - ' in ch.name else f'Page_{ch.page_index}'
+            if prefix not in layer_groups:
+                layer_groups[prefix] = {}
+            if 'red' in name_lower or ch.channel_in_page == 0:
+                layer_groups[prefix]['R'] = ch
+            elif 'green' in name_lower or ch.channel_in_page == 1:
+                layer_groups[prefix]['G'] = ch
+            elif 'blue' in name_lower or ch.channel_in_page == 2:
+                layer_groups[prefix]['B'] = ch
+            elif 'alpha' in name_lower or 'transparency' in name_lower or ch.channel_in_page == 3:
+                layer_groups[prefix]['A'] = ch
+
+    if not layer_groups:
+        return {}
+
+    best_score = -1.0
+    best_channels = {}
+
+    for prefix, grp in layer_groups.items():
+        if 'R' in grp:
+            try:
+                r = load_channel_array(filepath, grp['R'])
+                g = load_channel_array(filepath, grp['G']) if 'G' in grp else r
+                b = load_channel_array(filepath, grp['B']) if 'B' in grp else r
+                a = load_channel_array(filepath, grp['A']) if 'A' in grp else np.full(r.shape, 255, dtype=np.uint8)
+
+                solidity = float(a.mean())
+                rgb_var = float((r.std() + g.std() + b.std()) / 3.0)
+                score = (solidity * 2.0) + (rgb_var * 5.0)
+                if len(grp) >= 3:
+                    score += 100.0
+
+                if score > best_score:
+                    best_score = score
+                    best_channels = grp
+            except Exception:
+                pass
+
+    return best_channels
+
 def render_preview_rgb(
     filepath: str,
     channels: List[TIFFChannelInfo],
@@ -404,51 +454,36 @@ def render_preview_rgb(
     """
     Renders an RGB composite preview of the card for GUI previewing.
     Based on channel mappings and visibility settings.
-    
-    Arguments:
-        filepath: path to the TIFF file
-        channels: parsed list of TIFFChannelInfo
-        mappings: dict mapping TIFF channel name to target layer (e.g. {"Red": "Base Artwork"})
-        visible_layers: list of target layers currently checked visible (e.g. ["Base Artwork", "White Ink"])
     """
-    # 1. Group active mapped channels
-    # Find channels mapped to "Base Artwork" (typically Red, Green, Blue, Alpha)
-    art_channels = {}
+    art_channels = select_best_base_artwork(filepath, channels)
     white_channels = []
     gloss_channels = []
     emboss_channels = []
 
-    rgb_target = mappings.get("Base Artwork (RGB)", "Base Artwork")
-
     for ch in channels:
         name_lower = ch.name.lower()
-        is_rgb_ch = "red" in name_lower or "green" in name_lower or "blue" in name_lower or "alpha" in name_lower or "transparency" in name_lower or (ch.page_index == 0 and ch.channel_in_page in (0, 1, 2, 3))
-        
+        is_rgb_ch = any(k in name_lower for k in ("red", "green", "blue", "alpha", "transparency")) or (ch.page_index == 0 and ch.channel_in_page in (0, 1, 2, 3))
         if is_rgb_ch:
-            target = rgb_target
-        else:
-            target = mappings.get(ch.name)
-            if not target:
-                if ch.name == "1" or "white" in name_lower:
-                    target = "White Ink"
-                elif ch.name in ("3", "4") or "emboss" in name_lower:
-                    target = "Emboss"
-                elif "gloss" in name_lower or "varnish" in name_lower:
-                    target = "Gloss"
-            
+            continue
+
+        target = mappings.get(ch.name)
+        if not target:
+            if ch.name == "1" or "white" in name_lower:
+                target = "White Ink"
+            elif ch.name in ("3", "4") or "emboss" in name_lower:
+                target = "Emboss"
+            elif "gloss" in name_lower or "varnish" in name_lower:
+                target = "Gloss"
+        
         if not target or target not in visible_layers:
             continue
         
-        if target == "Base Artwork":
-            # Identify R, G, B, A components
-            if "red" in name_lower or (not art_channels and ch.channel_in_page == 0):
-                art_channels['R'] = ch
-            elif "green" in name_lower or (len(art_channels) == 1 and ch.channel_in_page == 1):
-                art_channels['G'] = ch
-            elif "blue" in name_lower or (len(art_channels) == 2 and ch.channel_in_page == 2):
-                art_channels['B'] = ch
-            elif "alpha" in name_lower or "transparency" in name_lower:
-                art_channels['A'] = ch
+        if target in ("White Ink", "1"):
+            white_channels.append(ch)
+        elif target in ("Gloss", "varnish"):
+            gloss_channels.append(ch)
+        elif target in ("Emboss", "Emboss 1", "Emboss 2", "3", "4") or "emboss" in target.lower():
+            emboss_channels.append(ch)
         elif target in ("White Ink", "1"):
             white_channels.append(ch)
         elif target in ("Gloss", "varnish"):

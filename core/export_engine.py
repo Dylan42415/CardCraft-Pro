@@ -66,22 +66,7 @@ def compile_sheet_pass(
             sx, sy = slot_def["x"], slot_def["y"]
 
             if target_pass == "Base Artwork":
-                # Find channels mapped to Base Artwork (R, G, B, A)
-                art_ch = {}
-                rgb_target = slot_state.mappings.get("Base Artwork (RGB)", "Base Artwork")
-                if "Base Artwork (RGB)" not in slot_state.disabled_channels and rgb_target == "Base Artwork":
-                    for ch in channels:
-                        if slot_state.disabled_channels and ch.name in slot_state.disabled_channels:
-                            continue
-                        name_lower = ch.name.lower()
-                        if "red" in name_lower or (not art_ch and ch.channel_in_page == 0):
-                            art_ch['R'] = ch
-                        elif "green" in name_lower or (len(art_ch) == 1 and ch.channel_in_page == 1):
-                            art_ch['G'] = ch
-                        elif "blue" in name_lower or (len(art_ch) == 2 and ch.channel_in_page == 2):
-                            art_ch['B'] = ch
-                        elif "alpha" in name_lower or "transparency" in name_lower:
-                            art_ch['A'] = ch
+                art_ch = tiff_parser.select_best_base_artwork(slot_state.filepath, channels)
 
                 card_img = Image.new("RGBA", (w_card, h_card), (255, 255, 255, 255))
                 if 'R' in art_ch or 'G' in art_ch or 'B' in art_ch:
@@ -644,21 +629,7 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
 
         # Render Base Artwork (RGBA with true Alpha=0 transparency outside 3mm corners)
         if is_base_enabled:
-            art_ch = {}
-            rgb_target = slot.mappings.get("Base Artwork (RGB)", "Base Artwork")
-            if "Base Artwork (RGB)" not in slot.disabled_channels and rgb_target == "Base Artwork":
-                for ch in channels:
-                    if slot.disabled_channels and ch.name in slot.disabled_channels:
-                        continue
-                    name_lower = ch.name.lower()
-                    if "red" in name_lower or (not art_ch and ch.channel_in_page == 0):
-                        art_ch['R'] = ch
-                    elif "green" in name_lower or (len(art_ch) == 1 and ch.channel_in_page == 1):
-                        art_ch['G'] = ch
-                    elif "blue" in name_lower or (len(art_ch) == 2 and ch.channel_in_page == 2):
-                        art_ch['B'] = ch
-                    elif "alpha" in name_lower or "transparency" in name_lower:
-                        art_ch['A'] = ch
+            art_ch = tiff_parser.select_best_base_artwork(slot.filepath, channels)
 
             if 'R' in art_ch or 'G' in art_ch or 'B' in art_ch:
                 r_arr = tiff_parser.load_channel_array(slot.filepath, art_ch['R']) if 'R' in art_ch else np.full(channels[0].shape, 255, dtype=np.uint8)
