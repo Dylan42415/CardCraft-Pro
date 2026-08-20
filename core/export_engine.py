@@ -816,8 +816,10 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
             pass1_path = os.path.join(card_subfolder, f"card_slot_{slot.slot_index + 1}_{base_name}_1stpass.tiff")
             save_card_tiff(pass1_path, p1_spot_channels, p1_extra_names)
 
+            # In the 2nd pass file, Channel 4 (Emboss 2) is exported with Photoshop channel name "3"
+            p2_extra_names_renamed = ["3" if name == "4" else name for name in p2_extra_names]
             pass2_path = os.path.join(card_subfolder, f"card_slot_{slot.slot_index + 1}_{base_name}_2ndpass.tiff")
-            save_card_tiff(pass2_path, p2_spot_channels, p2_extra_names)
+            save_card_tiff(pass2_path, p2_spot_channels, p2_extra_names_renamed)
         else:
             single_path = os.path.join(output_dir, f"card_slot_{slot.slot_index + 1}_{base_name}_600ppi.tiff")
             save_card_tiff(single_path, p1_spot_channels, p1_extra_names)
