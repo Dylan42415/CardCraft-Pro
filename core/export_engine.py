@@ -684,7 +684,15 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
             channels_list.append(card_arr[..., 2])
             channels_list.append(card_arr[..., 3])
 
-        # Render Spot Passes (Preserve White Ink 1, Emboss 3, Emboss 4, etc.)
+        # Categorize spot channels into Pass 1 (1 & 3, Gloss) and Pass 2 (4+)
+        p1_spot_channels = []
+        p2_spot_channels = []
+        all_spot_channels = []
+
+        p1_extra_names = []
+        p2_extra_names = []
+        all_extra_names_spot = []
+
         for ch in channels:
             name_lower = ch.name.lower()
             if any(x in name_lower for x in ("red", "green", "blue", "cyan", "magenta", "yellow", "alpha", "transparency")) or ch.name == "Base Artwork (RGB)":
@@ -749,65 +757,90 @@ def export_individual_cards(project: Project, output_dir: str, ppi: int = 600) -
             repaired_arr = dithering.binary_enforce_channel(spot_arr)
             rep = dithering.validate_binary_channel(repaired_arr, mapped_pass, f"Slot {slot.slot_index + 1} - {ch.name}")
             all_reports.append(rep)
-            channels_list.append(repaired_arr)
-            
-            # Spot channel naming for Photoshop Resource Block
+
+            # Spot channel naming & pass classification
             ch_display_name = ch.name
+            is_pass_2 = False
+
             if mapped_pass == "White Ink" or ch.name in ("1", "white ink"):
                 ch_display_name = "1"
             elif mapped_pass == "Emboss" or ch.name in ("3", "emboss", "emboss 1"):
                 ch_display_name = "3"
             elif mapped_pass in ("Emboss 2", "Emboss2") or ch.name in ("4", "emboss 2", "emboss2"):
                 ch_display_name = "4"
+                is_pass_2 = True
             elif "emboss" in mapped_pass.lower() or "emboss" in ch.name.lower():
+                is_pass_2 = True
                 val = 4
-                while str(val) in extra_names:
+                while str(val) in (p1_extra_names + p2_extra_names):
                     val += 1
                 ch_display_name = str(val)
 
-            # Deduplicate channel names so Photoshop never displays repeated names (e.g. 4, 4, 4)
-            if ch_display_name in extra_names:
-                if ch_display_name.isdigit():
-                    val = int(ch_display_name) + 1
-                    while str(val) in extra_names:
+            if is_pass_2:
+                if ch_display_name in p2_extra_names:
+                    val = int(ch_display_name) + 1 if ch_display_name.isdigit() else 5
+                    while str(val) in p2_extra_names:
                         val += 1
                     ch_display_name = str(val)
-                else:
-                    count = 2
-                    while f"{ch_display_name} {count}" in extra_names:
-                        count += 1
-                    ch_display_name = f"{ch_display_name} {count}"
+                p2_spot_channels.append(repaired_arr)
+                p2_extra_names.append(ch_display_name)
+            else:
+                if ch_display_name in p1_extra_names:
+                    val = int(ch_display_name) + 1 if ch_display_name.isdigit() else 2
+                    while str(val) in p1_extra_names:
+                        val += 1
+                    ch_display_name = str(val)
+                p1_spot_channels.append(repaired_arr)
+                p1_extra_names.append(ch_display_name)
 
-            extra_names.append(ch_display_name)
+            all_spot_channels.append(repaired_arr)
+            all_extra_names_spot.append(ch_display_name)
 
-        if not channels_list:
+        if not all_spot_channels and not is_base_enabled:
             continue
 
-        stacked_arr = np.stack(channels_list, axis=-1)
-        photometric = 'rgb' if is_base_enabled else 'minisblack'
-        
-        # Build extra names list: include "Alpha" name entry if base artwork has Alpha channel
-        if is_base_enabled:
-            extra_samples = [2] + [0] * len(extra_names)
-            all_extra_names = ["Alpha"] + extra_names
-        else:
-            extra_samples = [0] * len(extra_names)
-            all_extra_names = extra_names
+        base_channels = channels_list if is_base_enabled else []
 
-        extratags = []
-        if all_extra_names:
-            resource_bytes = create_photoshop_resource_block(all_extra_names)
-            extratags.append((34377, 1, len(resource_bytes), resource_bytes, True))
+        def save_card_tiff(file_path, spot_arrs, spot_names):
+            c_list = list(base_channels) + list(spot_arrs)
+            if not c_list:
+                return
+            stacked = np.stack(c_list, axis=-1)
+            photometric = 'rgb' if is_base_enabled else 'minisblack'
+            
+            if is_base_enabled:
+                extra_samples = [2] + [0] * len(spot_names)
+                all_names = ["Alpha"] + spot_names
+            else:
+                extra_samples = [0] * len(spot_names)
+                all_names = spot_names
 
-        tifffile.imwrite(
-            out_path,
-            stacked_arr,
-            photometric=photometric,
-            extrasamples=extra_samples,
-            extratags=extratags,
-            metadata={'axes': 'YXS' if len(stacked_arr.shape) == 3 else 'YX'}
-        )
-        exported_paths.append(out_path)
+            extratags = []
+            if all_names:
+                resource_bytes = create_photoshop_resource_block(all_names)
+                extratags.append((34377, 1, len(resource_bytes), resource_bytes, True))
+
+            tifffile.imwrite(
+                file_path,
+                stacked,
+                photometric=photometric,
+                extrasamples=extra_samples,
+                extratags=extratags,
+                metadata={'axes': 'YXS' if len(stacked.shape) == 3 else 'YX'}
+            )
+            exported_paths.append(file_path)
+
+        # 1. Export 1st Pass file (channels 1 & 3)
+        pass1_path = os.path.join(output_dir, f"card_slot_{slot.slot_index + 1}_{base_name}_1stpass.tiff")
+        save_card_tiff(pass1_path, p1_spot_channels, p1_extra_names)
+
+        # 2. Export 2nd Pass file if channel 4 / Pass 2 exists
+        if p2_spot_channels:
+            pass2_path = os.path.join(output_dir, f"card_slot_{slot.slot_index + 1}_{base_name}_2ndpass.tiff")
+            save_card_tiff(pass2_path, p2_spot_channels, p2_extra_names)
+
+        # 3. Export combined multi-channel file
+        save_card_tiff(out_path, all_spot_channels, all_extra_names_spot)
 
     return exported_paths, all_reports
 
